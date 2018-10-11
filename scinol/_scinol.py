@@ -17,6 +17,7 @@ class ScInOLOptimizer(optimizer.Optimizer):
         self.s0 = s0
         # TODO remove workaround:
         self.inputs = {}
+        self.t = tf.Variable(0.0, trainable=False)
 
     def _create_const_init_slot(self, v, name, value=0):
         initializer = tf.initializers.constant(value, dtype=v.dtype)
@@ -55,7 +56,9 @@ class ScInOLOptimizer(optimizer.Optimizer):
                 # TODO avg???
                 self.inputs[var] = tf.reshape(tf.reduce_mean(self.raw_features, axis=0), [-1, 1])
             new_var_list.append(self._preapply_dense(var))
-        return new_var_list
+
+        new_t = tf.assign_add(self.t, 1)
+        return tf.group(new_var_list+ [new_t])
 
     def _preapply_dense(self, var):
         x = self.inputs[var]
@@ -65,12 +68,11 @@ class ScInOLOptimizer(optimizer.Optimizer):
         M = self.get_slot(var, "var_max")
 
         M = tf.assign(M, tf.maximum(M, tf.abs(x)))
-
-        beta = tf.assign(beta, tf.minimum(beta, self.eps * (S2 + M ** 2) / x ** 2))
+        beta = tf.assign(beta, tf.minimum(beta, self.eps * (S2 + M ** 2) / x ** 2*(self.t+1)))
 
         theta = G / (S2 + M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
-        return new_var
+        return tf.assign(var, new_var)
 
     def _apply_dense(self, grad, var):
         x = self.inputs[var]
@@ -89,9 +91,8 @@ class ScInOL2Optimizer(ScInOLOptimizer):
     See this [paper](TODO)
     """
 
-    def __init__(self,  name="ScInOl2", **kwargs):
-        super(ScInOL2Optimizer, self).__init__( name=name, **kwargs)
-
+    def __init__(self, name="ScInOl2", **kwargs):
+        super(ScInOL2Optimizer, self).__init__(name=name, **kwargs)
 
     def _create_slots(self, var_list):
         for v in var_list:
@@ -114,7 +115,7 @@ class ScInOL2Optimizer(ScInOLOptimizer):
         theta = G / (S2 + M ** 2) ** 0.5
 
         new_var = (tf.minimum(tf.abs(theta), 1) * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * eta
-        return new_var
+        return tf.assign(var, new_var)
 
     def _apply_dense(self, grad, var):
         x = self.inputs[var]
@@ -126,7 +127,7 @@ class ScInOL2Optimizer(ScInOLOptimizer):
         S2 = tf.assign_add(S2, (grad * x) ** 2)
         eta = tf.assign_add(eta, -grad * var * x)
 
-        return G, S2, eta
+        return tf.group(G, S2, eta)
 
 
 class NAGOptimizer(ScInOLOptimizer):
@@ -138,14 +139,14 @@ class NAGOptimizer(ScInOLOptimizer):
     def __init__(self, s0=SMALL_NUMBER, eta=0.1, name="NAG", use_locking=False, **kwargs):
         super(NAGOptimizer, self).__init__(s0=s0, use_locking=use_locking, name=name)
         self.eta = eta
+        self.N = tf.Variable(self.s0, trainable=False)
 
     def _create_slots(self, var_list):
         for v in var_list:
             with ops.colocate_with(v):
                 self._create_const_init_slot(v, "s", self.s0)
                 self._create_const_init_slot(v, "G", self.s0)
-        self.N = tf.Variable(self.s0, trainable=False)
-        self.t = tf.Variable(0.0, trainable=False)
+
 
     def _apply_dense(self, grad, var):
         s = self.get_slot(var, "s")
