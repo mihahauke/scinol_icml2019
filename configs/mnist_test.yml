@@ -1,0 +1,58 @@
+optimizers:
+  COCOBOptimizer:
+#  - {alpha: 0}
+#  AdalbertOptimizer:
+#  NewAlgorithmOptimizer:
+#  tf.train.AdamOptimizer:
+#  - {learning_rate: 0.01 }
+#  - {learning_rate: 0.001 }
+#  - {learning_rate: 0.0001 }
+
+#  AdalbertOptimizer2:
+#  AdalbertOptimizer3:
+#  NewAlgorithmOptimizer2:
+
+#  - {s0: 0.1 }
+#  - {s0: 0.01 }
+#  - {s0: 0.01 }
+#  - {s0: 0.0 }
+#  - {s0: 100 }
+#  - {s0: 1000 }
+#  - {s0: 10, eta0: 0.1}
+#  - {s0: 100, eta0: 0.1 }
+#  - {s0: 100, eta0: 0.01 }
+#  - {s0: 1000, eta0: 0.1 }
+#  - {s0: 1000 }
+#  - {s0: 5000 }
+#  - {s0: 10000 }
+
+#  - {s0: 1 }
+
+
+#  tf.train.AdadeltaOptimizer:
+#    - {learning_rate: 1.0}
+#    - {learning_rate: 0.001}
+#  tf.train.GradientDescentOptimizer:
+#    - {learning_rate: 0.01 }
+#  tf.train.RMSPropOptimizer:
+#    - {learning_rate: 0.0005 }
+#  tf.train.AdagradOptimizer:
+#    - {learning_rate: 0.00075 }
+##  MetagradOptimizer:
+#    - {num_etas: 20, D: 0.15}
+#    - {num_etas: 10, D: 0.15}
+#    - {num_etas: 5, D: 0.15}
+models:
+#  - nn_1000_500
+#  - nn_1000_500_elu
+#  - cnn_simple
+#  - cnn_simple_elu
+  - lr
+datasets:
+  - Mnist
+
+train_batchsize: 200
+
+epochs: 30
+times: 1
+train_histograms: False

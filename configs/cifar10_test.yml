@@ -1,0 +1,22 @@
+optimizers:
+  COCOBOptimizer:
+  AdalbertOptimizer:
+  AdalbertOptimizer2:
+  tf.train.AdamOptimizer:
+#  - {learning_rate: 0.01 }
+  - {learning_rate: 0.001 }
+#  - {learning_rate: 0.0001 }
+models:
+  - lr
+#  - nn_1000_500
+  - nn_1000_1000
+  - nn_1000_500_elu
+#  - cnn_simple
+#  - cocob_cnn
+
+dataset: Cifar10
+train_batchsize: 200
+test_batchsize: 10000
+epochs: 100
+times: 3
+one_hot: False

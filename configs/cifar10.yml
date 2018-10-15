@@ -1,0 +1,37 @@
+optimizers:
+#  COCOBOptimizer:
+  AdalbertOptimizer3:
+#  NewAlgorithmOptimizer:
+#  - {s0: 1.0 }
+#  - {s0: 0.0 }
+#  AdalbertOptimizer2:
+##  - {s0: 1 }
+#  tf.train.AdamOptimizer:
+#  - {learning_rate: 0.01 }
+#  - {learning_rate: 0.001 }
+#  - {learning_rate: 0.0001 }
+
+#  tf.train.AdadeltaOptimizer:
+#    - {learning_rate: 1.0}
+#    - {learning_rate: 0.001}
+#  tf.train.GradientDescentOptimizer:
+#    - {learning_rate: 0.01 }
+#  tf.train.RMSPropOptimizer:
+#    - {learning_rate: 0.0005 }
+#  tf.train.AdagradOptimizer:
+#    - {learning_rate: 0.00075 }
+##  MetagradOptimizer:
+#    - {num_etas: 20, D: 0.15}
+#    - {num_etas: 10, D: 0.15}
+#    - {num_etas: 5, D: 0.15}
+models:
+#  - nn_1000_500
+#  - nn_1000_500_elu
+  - cnn_simple
+#  - cnn_simple_elu
+#  - lr
+dataset: Cifar10
+train_batchsize: 200
+
+epochs: 100
+times: 1
