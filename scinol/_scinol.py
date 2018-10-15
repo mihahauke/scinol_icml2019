@@ -68,7 +68,7 @@ class ScInOLOptimizer(optimizer.Optimizer):
         M = self.get_slot(var, "var_max")
 
         M = tf.assign(M, tf.maximum(M, tf.abs(x)))
-        beta = tf.assign(beta, tf.minimum(beta, self.eps * (S2 + M ** 2) / x ** 2*(self.t+1)))
+        beta = tf.assign(beta, tf.minimum(beta, self.eps * (S2 + M ** 2) / (x ** 2*(self.t+1))))
 
         theta = G / (S2 + M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
@@ -79,8 +79,8 @@ class ScInOLOptimizer(optimizer.Optimizer):
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
 
-        G = tf.assign_add(G, -grad * x)
-        S2 = tf.assign_add(S2, (grad * x) ** 2)
+        G = tf.assign_add(G, -grad )
+        S2 = tf.assign_add(S2, (grad ) ** 2)
 
         return G, S2
 
@@ -123,9 +123,9 @@ class ScInOL2Optimizer(ScInOLOptimizer):
         S2 = self.get_slot(var, "squared_grads_sum")
         eta = self.get_slot(var, "eta")
 
-        G = tf.assign_add(G, -grad * x)
-        S2 = tf.assign_add(S2, (grad * x) ** 2)
-        eta = tf.assign_add(eta, -grad * var * x)
+        G = tf.assign_add(G, -grad )
+        S2 = tf.assign_add(S2, (grad) ** 2)
+        eta = tf.assign_add(eta, -grad * var )
 
         return tf.group(G, S2, eta)
 
