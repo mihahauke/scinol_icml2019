@@ -62,7 +62,7 @@ class _Dataset():
             num_outputs = 1
 
         self._name = name
-        self._input_shape = input_shape
+        self._input_shape = list(input_shape)
         self._outputs_num = num_outputs
         self.test = list(test_data)
         self.train = list(train_data)
@@ -245,7 +245,7 @@ class Mnist(_Dataset):
                                     train_data=(train_images, train_labels),
                                     test_data=(test_images, test_labels),
                                     input_shape=MNIST_DATA_SHAPE,
-                                    output_shape=MNIST_CLASSES_NUM,
+                                    num_outputs=MNIST_CLASSES_NUM,
                                     *args, **kwargs)
 
 
