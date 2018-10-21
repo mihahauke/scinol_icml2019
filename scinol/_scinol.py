@@ -75,7 +75,6 @@ class ScInOLOptimizer(optimizer.Optimizer):
         return tf.assign(var, new_var)
 
     def _apply_dense(self, grad, var):
-        x = self.inputs[var]
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
 
@@ -114,11 +113,10 @@ class ScInOL2Optimizer(ScInOLOptimizer):
 
         theta = G / (S2 + M ** 2) ** 0.5
 
-        new_var = (tf.minimum(tf.abs(theta), 1) * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * eta
+        new_var = tf.sign(theta)*tf.minimum(tf.abs(theta), 1.0)  / (2 * (S2 + M ** 2) ** 0.5) * eta
         return tf.assign(var, new_var)
 
     def _apply_dense(self, grad, var):
-        x = self.inputs[var]
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
         eta = self.get_slot(var, "eta")
