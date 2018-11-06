@@ -7,7 +7,7 @@ def _sigmoid(x, threshold=500):
 def normal_scaled(size,
                   num_features,
                   loc=0,
-                  max_exponent=20,
+                  max_exponent=10,
                   seed=None,
                   return_probs=False):
 

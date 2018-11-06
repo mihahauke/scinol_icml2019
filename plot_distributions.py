@@ -54,5 +54,5 @@ if __name__ == "__main__":
                   alpha=args.alpha,
                   name=name)
 
-    # plot(normal_dist_outliers,name="Normal with outliers")
-    plot(normal_scaled, name="Normal scaled 2^10", max_exponent=10)
+    plot(normal_dist_outliers,name="Normal with outliers")
+    # plot(normal_scaled, name="Normal scaled 2^10", max_exponent=10)

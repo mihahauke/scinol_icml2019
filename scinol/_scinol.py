@@ -58,7 +58,7 @@ class ScInOLOptimizer(optimizer.Optimizer):
             new_var_list.append(self._preapply_dense(var))
 
         new_t = tf.assign_add(self.t, 1)
-        return tf.group(new_var_list+ [new_t])
+        return tf.group(new_var_list + [new_t])
 
     def _preapply_dense(self, var):
         x = self.inputs[var]
@@ -68,7 +68,7 @@ class ScInOLOptimizer(optimizer.Optimizer):
         M = self.get_slot(var, "var_max")
 
         M = tf.assign(M, tf.maximum(M, tf.abs(x)))
-        beta = tf.assign(beta, tf.minimum(beta, self.eps * (S2 + M ** 2) / (x ** 2*(self.t+1))))
+        beta = tf.assign(beta, tf.minimum(beta, self.eps * (S2 + M ** 2) / (x ** 2 * (self.t + 1))))
 
         theta = G / (S2 + M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
@@ -78,8 +78,8 @@ class ScInOLOptimizer(optimizer.Optimizer):
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
 
-        G = tf.assign_add(G, -grad )
-        S2 = tf.assign_add(S2, (grad ) ** 2)
+        G = tf.assign_add(G, -grad)
+        S2 = tf.assign_add(S2, (grad) ** 2)
 
         return G, S2
 
@@ -113,7 +113,7 @@ class ScInOL2Optimizer(ScInOLOptimizer):
 
         theta = G / (S2 + M ** 2) ** 0.5
 
-        new_var = tf.sign(theta)*tf.minimum(tf.abs(theta), 1.0)  / (2 * (S2 + M ** 2) ** 0.5) * eta
+        new_var = tf.sign(theta) * tf.minimum(tf.abs(theta), 1.0) / (2 * (S2 + M ** 2) ** 0.5) * eta
         return tf.assign(var, new_var)
 
     def _apply_dense(self, grad, var):
@@ -121,9 +121,9 @@ class ScInOL2Optimizer(ScInOLOptimizer):
         S2 = self.get_slot(var, "squared_grads_sum")
         eta = self.get_slot(var, "eta")
 
-        G = tf.assign_add(G, -grad )
+        G = tf.assign_add(G, -grad)
         S2 = tf.assign_add(S2, (grad) ** 2)
-        eta = tf.assign_add(eta, -grad * var )
+        eta = tf.assign_add(eta, -grad * var)
 
         return tf.group(G, S2, eta)
 
@@ -144,7 +144,6 @@ class NAGOptimizer(ScInOLOptimizer):
             with ops.colocate_with(v):
                 self._create_const_init_slot(v, "s", self.s0)
                 self._create_const_init_slot(v, "G", self.s0)
-
 
     def _apply_dense(self, grad, var):
         s = self.get_slot(var, "s")

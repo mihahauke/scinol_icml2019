@@ -1,5 +1,5 @@
 optimizers:
-#  ScInOLOptimizer:
+  ScInOLOptimizer:
 #  ScInOL2Optimizer:
 #  NAGOptimizer:
 #    - {eta: 0.01 }
@@ -15,7 +15,7 @@ optimizers:
 #  COCOBOptimizer:
 #    - {alpha: 0}
 #    - {alpha: 100}
-#  tf.train.AdamOptimizer:
+  tf.train.AdamOptimizer:
 #    - {learning_rate: 0.01 }
 #    - {learning_rate: 0.001 }
 #    - {learning_rate: 0.0001 }
@@ -57,10 +57,10 @@ models:
   - lr0
 
 datasets:
-- SynthNormal
-#- SynthScaled
+#- SynthNormal
+- SynthScaled
 #  - SynthOutliers
-
+#- Mnist
 #  - PennPoker
 #  - PennSleep
 #  - PennFars
