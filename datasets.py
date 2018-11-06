@@ -8,9 +8,7 @@ import numpy as np
 from mnist import MNIST
 from six.moves import urllib
 from distributions import normal_scaled, normal_dist_outliers, normal
-from matplotlib import pyplot as plt
 
-plt.style.use("ggplot")
 
 from sklearn.preprocessing import StandardScaler
 # TODO deprecation here
