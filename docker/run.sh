@@ -10,7 +10,7 @@ nvidia-docker run \
         --user=`id -u`:`id -g`\
         --net=host \
         --name ${NAME} \
-        -v `pwd`:${ACTUAL_DIR}  \
+        -v ${ACTUAL_DIR}:/home/optimizers \
         --rm\
         ${IMAGE_TAG} \
         "$@"

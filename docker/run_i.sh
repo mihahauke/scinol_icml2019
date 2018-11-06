@@ -11,7 +11,7 @@ nvidia-docker run \
        --net=host \
        -it \
        --name ${NAME} \
-       -v `pwd`:${ACTUAL_DIR} \
+       -v ${ACTUAL_DIR}:/home/optimizers \
        --rm\
        --entrypoint /bin/bash \
         ${IMAGE_TAG}
