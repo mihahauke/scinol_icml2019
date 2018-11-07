@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 
-SCRIPT="$2"
-ARGS="$3"
+ACTUAL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/..
+cd ${ACTUAL_DIR}
+
 TAG="$1"
-LOGDIR=~/slurm_logs/`hostname`_${TAG}_`date +"%d_%H_%M_%S"`.log
+SCRIPT="$2"
+ARGS="${@:3}"
+
+LOGDIR="~/slurm_logs"
+LOGFILE=${LOGDIR}/`hostname`_${TAG}_`date +"%d_%H_%M_%S"`.log
 
 sbatch  -J ${TAG} \
         --exclusive \
         -p lab-ci \
-	    -o ${LOGDIR} \
+	    -o ${LOGFILE} \
 	    ${SCRIPT} ${ARGS}
 
 
