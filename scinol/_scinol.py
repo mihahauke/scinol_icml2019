@@ -213,7 +213,7 @@ class PreScinol2Optimizer(_Workaround):
         s2 = self.get_slot(var, "squared_grads_sum")
         eta = self.get_slot(var, "eta")
 
-        gamma = eta / self.alpha * tf.exp(-(h ** 2 * x ** 2) / (s2 * (s2 + x ** 2)))
+        gamma = eta / self.alpha * tf.exp(-(h ** 2 * x ** 2) / (s2 * (s2 + x ** 2) * 2 * self.alpha))
         gamma = tf.where(tf.not_equal(s2, 0), gamma, eta / self.alpha)
 
         broadcasted_x = tf.broadcast_to(x, s2.shape)
