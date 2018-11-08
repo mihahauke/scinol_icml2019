@@ -140,7 +140,12 @@ class PreScinolOptimizer(_BaseOptimizer):
     See this [paper](TODO)
     """
 
-    def __init__(self, use_locking=False, alpha=1.5, epsilon=1, s0=0, name="PreScinol"):
+    def __init__(self,
+                 alpha=1.5,
+                 epsilon=1,
+                 s0=0,
+                 name="PreScinol",
+                 use_locking=False):
         super(PreScinolOptimizer, self).__init__(use_locking, name)
         self.alpha = alpha
         self.epsilon = epsilon
@@ -170,9 +175,57 @@ class PreScinolOptimizer(_BaseOptimizer):
         h = self.get_slot(var, "grads_sum")
 
         new_h = tf.assign_add(h, -grad)
-
         return new_h
 
+class PreScinol2Optimizer(_BaseOptimizer):
+    """Optimizer that implements the <NAME_HERE> algorithm.
+
+    See this [paper](TODO)
+    """
+
+    def __init__(self,
+                 alpha=1.5,
+                 epsilon=1,
+                 s0=0,
+                 name="PreScinol2",
+                 use_locking=False):
+        super(PreScinol2Optimizer, self).__init__(use_locking, name)
+        self.alpha = alpha
+        self.epsilon = epsilon
+        self.s0 = s0
+
+    def _create_slots(self, var_list):
+        for v in var_list:
+            with ops.colocate_with(v):
+                self.create_const_init_slot(v, "grads_sum", 0)
+                self.create_const_init_slot(v, "squared_grads_sum", self.s0)
+                self.create_const_init_slot(v, "eta", self.epsilon)
+
+    def _preapply_dense(self, var):
+        x = self.inputs[var]
+        h = self.get_slot(var, "grads_sum")
+        s2 = self.get_slot(var, "squared_grads_sum")
+        eta = self.get_slot(var, "eta")
+
+
+        gamma = eta /self.alpha  * tf.exp(-(h**2*x**2)/(s2*(s2+x**2)))
+        gamma = tf.where(tf.not_equal(s2, 0), gamma, eta/self.alpha)
+
+        broadcasted_x = tf.broadcast_to(x, s2.shape)
+        new_s2 = tf.assign_add(s2, broadcasted_x ** 2)
+
+        new_var = gamma*h/new_s2
+        new_var = tf.where(tf.not_equal(s2, 0), new_var, tf.zeros_like(new_var))
+        return tf.assign(var, new_var)
+
+    def _apply_dense(self, grad, var):
+        h = self.get_slot(var, "grads_sum")
+        eta = self.get_slot(var, "eta")
+
+        new_h = tf.assign_add(h, -grad)
+        new_eta = tf.assign_add(eta,-grad*var)
+
+        return tf.group(new_h, new_eta)
 
 class NAGOptimizer(_BaseOptimizer):
     """Optimizer that implements the sNAG algorithm.
