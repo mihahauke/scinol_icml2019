@@ -6,10 +6,9 @@ SMALL_NUMBER = 1e-6
 
 
 class _BaseOptimizer(optimizer.Optimizer):
-    def __init__(self, use_locking, name):
-        super(_BaseOptimizer, self).__init__(use_locking, name)
+    def __init__(self, *args, **kwargs):
+        super(_BaseOptimizer, self).__init__(*args, **kwargs)
         self.t = tf.Variable(0.0, trainable=False)
-        self.inputs = {}
 
     def create_const_init_slot(self, v, name, value=0):
         initializer = tf.initializers.constant(value, dtype=v.dtype)
@@ -22,6 +21,12 @@ class _BaseOptimizer(optimizer.Optimizer):
 
         self._get_or_make_slot_with_initializer(
             v, initializer, v.shape, v.dtype, name, self._name)
+
+
+class _Workaround(_BaseOptimizer):
+    def __init__(self, *args, **kwargs):
+        super(_Workaround, self).__init__(*args, **kwargs)
+        self.inputs = {}
 
     # TODO HUGE workaround
     def pre_minimize(self, raw_features, var_list=None):
@@ -44,7 +49,7 @@ class _BaseOptimizer(optimizer.Optimizer):
         return tf.group(new_var_list + [new_t])
 
 
-class ScinolOptimizer(_BaseOptimizer):
+class ScinolOptimizer(_Workaround):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -89,7 +94,7 @@ class ScinolOptimizer(_BaseOptimizer):
         return G, S2
 
 
-class Scinol2Optimizer(_BaseOptimizer):
+class Scinol2Optimizer(_Workaround):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -134,7 +139,7 @@ class Scinol2Optimizer(_BaseOptimizer):
         return tf.group(G, S2, eta)
 
 
-class PreScinolOptimizer(_BaseOptimizer):
+class PreScinolOptimizer(_Workaround):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -177,7 +182,8 @@ class PreScinolOptimizer(_BaseOptimizer):
         new_h = tf.assign_add(h, -grad)
         return new_h
 
-class PreScinol2Optimizer(_BaseOptimizer):
+
+class PreScinol2Optimizer(_Workaround):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -207,14 +213,13 @@ class PreScinol2Optimizer(_BaseOptimizer):
         s2 = self.get_slot(var, "squared_grads_sum")
         eta = self.get_slot(var, "eta")
 
-
-        gamma = eta /self.alpha  * tf.exp(-(h**2*x**2)/(s2*(s2+x**2)))
-        gamma = tf.where(tf.not_equal(s2, 0), gamma, eta/self.alpha)
+        gamma = eta / self.alpha * tf.exp(-(h ** 2 * x ** 2) / (s2 * (s2 + x ** 2)))
+        gamma = tf.where(tf.not_equal(s2, 0), gamma, eta / self.alpha)
 
         broadcasted_x = tf.broadcast_to(x, s2.shape)
         new_s2 = tf.assign_add(s2, broadcasted_x ** 2)
 
-        new_var = gamma*h/new_s2
+        new_var = gamma * h / new_s2
         new_var = tf.where(tf.not_equal(s2, 0), new_var, tf.zeros_like(new_var))
         return tf.assign(var, new_var)
 
@@ -223,11 +228,81 @@ class PreScinol2Optimizer(_BaseOptimizer):
         eta = self.get_slot(var, "eta")
 
         new_h = tf.assign_add(h, -grad)
-        new_eta = tf.assign_add(eta,-grad*var)
+        new_eta = tf.assign_add(eta, -grad * var)
 
         return tf.group(new_h, new_eta)
 
-class NAGOptimizer(_BaseOptimizer):
+
+class PreScinolDLOptimizer(_BaseOptimizer):
+    def __init__(self,
+                 alpha=1.5,
+                 epsilon=1.0,
+                 s0=SMALL_NUMBER,
+                 name="PreScinolDL",
+                 use_locking=False):
+        super(PreScinolDLOptimizer, self).__init__(use_locking, name)
+        self.alpha = float(alpha)
+        self.epsilon = float(epsilon)
+        self.s0 = float(s0)
+
+    def _create_slots(self, var_list):
+        for v in var_list:
+            with ops.colocate_with(v):
+                self.create_const_init_slot(v, "grads_sum", 0)
+                self.create_const_init_slot(v, "squared_grads_sum", self.s0)
+                self._get_or_make_slot(v, v, "initial_var", self._name)
+
+    def _apply_dense(self, grad, var):
+        h = self.get_slot(var, "grads_sum")
+        s2 = self.get_slot(var, "squared_grads_sum")
+        var0 = self.get_slot(var, "initial_var")
+
+        new_h = tf.assign_add(h, -grad)
+        new_s2 = tf.assign_add(s2, grad ** 2)
+
+        new_var = var0 + self.epsilon * new_h / (self.alpha * new_s2) * tf.exp(new_h ** 2 / (2 * self.alpha * new_s2))
+        new_var = tf.assign(var, new_var)
+
+        return tf.group(new_var, new_h, new_s2)
+
+
+class PreScinol2DLOptimizer(_BaseOptimizer):
+    def __init__(self,
+                 alpha=1.5,
+                 epsilon=1.0,
+                 s0=SMALL_NUMBER,
+                 name="PreScinolDL",
+                 use_locking=False):
+        super(PreScinol2DLOptimizer, self).__init__(use_locking, name)
+        self.alpha = float(alpha)
+        self.epsilon = float(epsilon)
+        self.s0 = float(s0)
+
+    def _create_slots(self, var_list):
+        for v in var_list:
+            with ops.colocate_with(v):
+                self.create_const_init_slot(v, "grads_sum", 0)
+                self.create_const_init_slot(v, "squared_grads_sum", self.s0)
+                self.create_const_init_slot(v, "eta", self.epsilon)
+                self._get_or_make_slot(v, v, "initial_var", self._name)
+
+    def _apply_dense(self, grad, var):
+        h = self.get_slot(var, "grads_sum")
+        s2 = self.get_slot(var, "squared_grads_sum")
+        eta = self.get_slot(var, "eta")
+        var0 = self.get_slot(var, "initial_var")
+
+        new_h = tf.assign_add(h, -grad)
+        new_s2 = tf.assign_add(s2, grad ** 2)
+        new_eta = tf.maximum(self.epsilon, eta - (var - var0) * grad)
+
+        new_var = var0 + new_eta * new_h / (self.alpha * new_s2)
+        new_var = tf.assign(var, new_var)
+
+        return tf.group(new_var, new_h, new_s2, new_eta)
+
+
+class NAGOptimizer(_Workaround):
     """Optimizer that implements the sNAG algorithm.
 
     See this [paper](https://arxiv.org/abs/1305.6646)
@@ -266,7 +341,7 @@ class NAGOptimizer(_BaseOptimizer):
         return new_var, new_N, new_t
 
 
-class sNAGOptimizer(NAGOptimizer):
+class sNAGOptimizer(_Workaround):
     """Optimizer that implements the sNAG algorithm.
     See this [paper](https://arxiv.org/abs/1305.6646)
     """

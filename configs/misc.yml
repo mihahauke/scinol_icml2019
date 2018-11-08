@@ -1,5 +1,9 @@
 optimizers:
+  PreScinolDLOptimizer:
+  PreScinol2DLOptimizer:
 #  PreScinolOptimizer:
+
+#  PreScinol2Optimizer:
 #    - {s0: 0.0000001}
 #  ScinolOptimizer:
 #  COCOBOptimizer:
@@ -19,7 +23,7 @@ optimizers:
 
 #    - {alpha: 0}
 #    - {alpha: 100}
-  tf.train.AdamOptimizer:
+#  tf.train.AdamOptimizer:
 #    - {learning_rate: 0.01 }
 #    - {learning_rate: 0.001 }
 #    - {learning_rate: 0.0001 }
