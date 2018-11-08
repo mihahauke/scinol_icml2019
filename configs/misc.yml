@@ -1,6 +1,10 @@
 optimizers:
-  ScInOLOptimizer:
-#  ScInOL2Optimizer:
+#  PreScinolOptimizer:
+#    - {s0: 0.0000001}
+#  ScinolOptimizer:
+#  COCOBOptimizer:
+#  tf.train.AdamOptimizer:
+#  Scinol2Optimizer:
 #  NAGOptimizer:
 #    - {eta: 0.01 }
 #    - {eta: 0.001 }
@@ -10,9 +14,9 @@ optimizers:
 #    - {eta: 0.001 }
 #    - {eta: 0.0001 }
 
-  COCOBOptimizer0:
+#  COCOBOptimizer0:
 #    - {L0: 0.1}
-#  COCOBOptimizer:
+
 #    - {alpha: 0}
 #    - {alpha: 100}
   tf.train.AdamOptimizer:
@@ -58,9 +62,9 @@ models:
 
 datasets:
 #- SynthNormal
-- SynthScaled
+#- SynthScaled
 #  - SynthOutliers
-#- Mnist
+- Mnist
 #  - PennPoker
 #  - PennSleep
 #  - PennFars
@@ -68,7 +72,7 @@ datasets:
 #  - PennConnect4
 #  - PennShuttle
 
-train_batchsize: 64
+train_batchsize: 256
 epochs: 30
 times: 1
 train_histograms: False

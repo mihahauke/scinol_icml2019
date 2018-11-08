@@ -44,6 +44,7 @@ def cnn(inputs,
             filters_num,
             kernel_size,
             stride,
+            data_format='channels_last',
             padding="VALID",
             activation=activation_fn
         )

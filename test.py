@@ -49,23 +49,26 @@ def test(
 
     x = tf.placeholder(tf.float32, [None] + dataset.input_shape, name='x-input')
     y = eval(model)(x, dataset.outputs_num, dropout_switch=dropout_switch)
+
     if dataset.outputs_num == 1:
         y_target = tf.placeholder(tf.float32, [None], name='y-input')
         flat_y = tf.reshape(y,[-1])
         cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_target, logits=flat_y)
-        correct_prediction = tf.equal(tf.round(flat_y), y_target)
+        correct_predictions = tf.equal(tf.cast(tf.greater(flat_y,0),tf.float32), y_target)
     else:
         if one_hot:
             y_target = tf.placeholder(tf.float32, [None, dataset.outputs_num], name='y-input')
             cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_target, logits=y)
-            correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_target, 1))
+            correct_predictions = tf.equal(tf.argmax(y, 1), tf.argmax(y_target, 1))
         else:
             y_target = tf.placeholder(tf.int64, [None], name='y-input')
             cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y_target, logits=y)
-            correct_prediction = tf.equal(tf.argmax(y, 1), y_target)
+            correct_predictions = tf.equal(tf.argmax(y, 1), y_target)
 
     mean_cross_entropy = tf.reduce_mean(cross_entropy)
 
+    accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
+    # accuracy = tf.metrics.accuracy(y_target, tf.reshape(y,[-1]))
 
     loss = mean_cross_entropy
     optimizer = eval(optimizer_class)(**optimizer_args)
@@ -78,7 +81,7 @@ def test(
     grads_and_vars = optimizer.compute_gradients(loss)
     train_step = optimizer.apply_gradients(grads_and_vars)
 
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
 
     summaries_prefix = dataset.get_name()
     hist_summaries = []

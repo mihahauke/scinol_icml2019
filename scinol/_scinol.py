@@ -5,40 +5,23 @@ from tensorflow.python.training import optimizer
 SMALL_NUMBER = 1e-6
 
 
-class ScInOLOptimizer(optimizer.Optimizer):
-    """Optimizer that implements the <NAME_HERE> algorithm.
-
-    See this [paper](TODO)
-    """
-
-    def __init__(self, epsilon=1.0, s0=0, name="ScInOl", use_locking=False, **kwargs):
-        super(ScInOLOptimizer, self).__init__(use_locking, name)
-        self.eps = float(epsilon)
-        self.s0 = s0
-        # TODO remove workaround:
-        self.inputs = {}
+class _BaseOptimizer(optimizer.Optimizer):
+    def __init__(self, use_locking, name):
+        super(_BaseOptimizer, self).__init__(use_locking, name)
         self.t = tf.Variable(0.0, trainable=False)
+        self.inputs = {}
 
-    def _create_const_init_slot(self, v, name, value=0):
+    def create_const_init_slot(self, v, name, value=0):
         initializer = tf.initializers.constant(value, dtype=v.dtype)
 
         self._get_or_make_slot_with_initializer(
             v, initializer, v.shape, v.dtype, name, self._name)
 
-    def _create_normal_init_slot(self, v, name, m=0, std=1):
+    def create_normal_init_slot(self, v, name, m=0, std=1):
         initializer = tf.initializers.random_normal(mean=m, stddev=std, dtype=v.dtype)
 
         self._get_or_make_slot_with_initializer(
             v, initializer, v.shape, v.dtype, name, self._name)
-
-    def _create_slots(self, var_list):
-        for v in var_list:
-            with ops.colocate_with(v):
-                self._create_const_init_slot(v, "grads_sum", 0)
-                self._create_const_init_slot(v, "squared_grads_sum", self.s0)
-                # self._get_or_make_slot(v, v, "initial_var", self._name)
-                self._create_const_init_slot(v, "var_max", SMALL_NUMBER)
-                self._create_const_init_slot(v, "beta", 1)
 
     # TODO HUGE workaround
     def pre_minimize(self, raw_features, var_list=None):
@@ -60,6 +43,28 @@ class ScInOLOptimizer(optimizer.Optimizer):
         new_t = tf.assign_add(self.t, 1)
         return tf.group(new_var_list + [new_t])
 
+
+class ScinolOptimizer(_BaseOptimizer):
+    """Optimizer that implements the <NAME_HERE> algorithm.
+
+    See this [paper](TODO)
+    """
+
+    def __init__(self, epsilon=1.0, s0=0, name="ScInOl", use_locking=False):
+        super(ScinolOptimizer, self).__init__(use_locking, name)
+        self.epsilon = float(epsilon)
+        self.s0 = s0
+        # TODO remove workaround:
+
+    def _create_slots(self, var_list):
+        for v in var_list:
+            with ops.colocate_with(v):
+                self.create_const_init_slot(v, "grads_sum", 0)
+                self.create_const_init_slot(v, "squared_grads_sum", self.s0)
+                # self._get_or_make_slot(v, v, "initial_var", self._name)
+                self.create_const_init_slot(v, "var_max", SMALL_NUMBER)
+                self.create_const_init_slot(v, "beta", 1)
+
     def _preapply_dense(self, var):
         x = self.inputs[var]
         beta = self.get_slot(var, "beta")
@@ -68,7 +73,7 @@ class ScInOLOptimizer(optimizer.Optimizer):
         M = self.get_slot(var, "var_max")
 
         M = tf.assign(M, tf.maximum(M, tf.abs(x)))
-        beta = tf.assign(beta, tf.minimum(beta, self.eps * (S2 + M ** 2) / (x ** 2 * (self.t + 1))))
+        beta = tf.assign(beta, tf.minimum(beta, self.epsilon * (S2 + M ** 2) / (x ** 2 * (self.t + 1))))
 
         theta = G / (S2 + M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
@@ -84,23 +89,24 @@ class ScInOLOptimizer(optimizer.Optimizer):
         return G, S2
 
 
-class ScInOL2Optimizer(ScInOLOptimizer):
+class Scinol2Optimizer(_BaseOptimizer):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
     """
 
-    def __init__(self, name="ScInOl2", **kwargs):
-        super(ScInOL2Optimizer, self).__init__(name=name, **kwargs)
+    def __init__(self, epsilon=1.0, s0=0, name="ScInOl2", use_locking=False):
+        super(Scinol2Optimizer, self).__init__(use_locking, name)
+        self.epsilon = float(epsilon)
+        self.s0 = s0
 
     def _create_slots(self, var_list):
         for v in var_list:
             with ops.colocate_with(v):
-                self._create_const_init_slot(v, "grads_sum", 0)
-                self._create_const_init_slot(v, "squared_grads_sum", self.s0)
-                # self._get_or_make_slot(v, v, "initial_var", self._name)
-                self._create_const_init_slot(v, "var_max", SMALL_NUMBER)
-                self._create_const_init_slot(v, "eta", self.eps)
+                self.create_const_init_slot(v, "grads_sum", 0)
+                self.create_const_init_slot(v, "squared_grads_sum", self.s0)
+                self.create_const_init_slot(v, "var_max", SMALL_NUMBER)
+                self.create_const_init_slot(v, "eta", self.epsilon)
 
     def _preapply_dense(self, var):
         x = self.inputs[var]
@@ -128,7 +134,47 @@ class ScInOL2Optimizer(ScInOLOptimizer):
         return tf.group(G, S2, eta)
 
 
-class NAGOptimizer(ScInOLOptimizer):
+class PreScinolOptimizer(_BaseOptimizer):
+    """Optimizer that implements the <NAME_HERE> algorithm.
+
+    See this [paper](TODO)
+    """
+
+    def __init__(self, use_locking=False, alpha=1.5, epsilon=1, s0=0, name="PreScinol"):
+        super(PreScinolOptimizer, self).__init__(use_locking, name)
+        self.alpha = alpha
+        self.epsilon = epsilon
+        self.s0 = s0
+
+    def _create_slots(self, var_list):
+        for v in var_list:
+            with ops.colocate_with(v):
+                self.create_const_init_slot(v, "grads_sum", 0)
+                self.create_const_init_slot(v, "squared_grads_sum", self.s0)
+                # self._get_or_make_slot(v, v, "initial_var", self._name)
+
+    def _preapply_dense(self, var):
+        x = self.inputs[var]
+        h = self.get_slot(var, "grads_sum")
+        s2 = self.get_slot(var, "squared_grads_sum")
+
+        broadcasted_x = tf.broadcast_to(x, s2.shape)
+        s2 = tf.assign_add(s2, broadcasted_x ** 2)
+        new_var = self.epsilon * h / (self.alpha * s2) * tf.exp((h ** 2 + x ** 2) / (2 * self.alpha * s2))
+
+        # equivalent new_var[s2==0] = 0
+        new_var = tf.where(tf.not_equal(s2, 0), new_var, tf.zeros_like(new_var))
+        return tf.assign(var, new_var)
+
+    def _apply_dense(self, grad, var):
+        h = self.get_slot(var, "grads_sum")
+
+        new_h = tf.assign_add(h, -grad)
+
+        return new_h
+
+
+class NAGOptimizer(_BaseOptimizer):
     """Optimizer that implements the sNAG algorithm.
 
     See this [paper](https://arxiv.org/abs/1305.6646)
@@ -142,8 +188,8 @@ class NAGOptimizer(ScInOLOptimizer):
     def _create_slots(self, var_list):
         for v in var_list:
             with ops.colocate_with(v):
-                self._create_const_init_slot(v, "s", self.s0)
-                self._create_const_init_slot(v, "G", self.s0)
+                self.create_const_init_slot(v, "s", self.s0)
+                self.create_const_init_slot(v, "G", self.s0)
 
     def _apply_dense(self, grad, var):
         s = self.get_slot(var, "s")
