@@ -9,7 +9,6 @@ from mnist import MNIST
 from six.moves import urllib
 from distributions import normal_scaled, normal_dist_outliers, normal
 
-
 from sklearn.preprocessing import StandardScaler
 # TODO deprecation here
 from tensorflow.examples.tutorials.mnist import input_data as mnist_data
@@ -38,7 +37,7 @@ MNIST_CLASSES_NUM = 10
 
 
 def _to_one_hot(int_labels):
-    enc = OneHotEncoder()
+    enc = OneHotEncoder(categories='auto')
     return enc.fit_transform(int_labels.reshape([-1, 1])).toarray()
 
 
@@ -66,10 +65,10 @@ class _Dataset():
         self.train = list(train_data)
 
         self.one_hot = one_hot
-        if self.one_hot:
-            self.train[1] = _to_one_hot(train_data[1])
-            self.test[1] = _to_one_hot(test_data[1])
 
+        if self.one_hot and num_outputs > 2:
+            self.train[1] = _to_one_hot(self.train[1])
+            self.test[1] = _to_one_hot(self.test[1])
         self.train_batchsize = train_batchsize
         self.test_batchsize = test_batchsize
 
@@ -255,7 +254,7 @@ class Synthetic(_Dataset):
                  test_ratio=0.33,
                  seed=None,
                  distribution=normal_scaled,
-                  **kwargs):
+                 **kwargs):
         x, labels = distribution(
             size,
             num_features,
@@ -270,38 +269,38 @@ class Synthetic(_Dataset):
             test_data=(x_test, y_test),
             input_shape=[num_features],
             num_outputs=2,
-             **kwargs)
+            **kwargs)
 
 
 class SyntheticStandardized(Synthetic):
     def __init__(self,
                  name="normal_standardized",
-                  **kwargs):
+                 **kwargs):
         super(SyntheticStandardized, self).__init__(
             name=name,
-             **kwargs)
+            **kwargs)
         scaler = StandardScaler()
         self.train[0] = scaler.fit_transform(self.train[0])
         self.test[0] = scaler.transform(self.test[0])
 
 
-SynthNormal = lambda  **kwargs: Synthetic(
+SynthNormal = lambda **kwargs: Synthetic(
     name="normal",
     size=100000,
     distribution=normal,
-     **kwargs)
-SynthScaled = lambda  **kwargs: Synthetic(
+    **kwargs)
+SynthScaled = lambda **kwargs: Synthetic(
     name="scaled",
     distribution=normal_scaled,
-     **kwargs)
-SynthOutliers = lambda  **kwargs: Synthetic(
+    **kwargs)
+SynthOutliers = lambda **kwargs: Synthetic(
     name="outliers",
     distribution=normal_dist_outliers,
-     **kwargs)
+    **kwargs)
 
-PennPoker = lambda  **kwargs: _Penn("poker", **kwargs)
-PennFars = lambda  **kwargs: _Penn("fars", **kwargs)
-PennKddcup = lambda  **kwargs: _Penn("kddcup", **kwargs)
-PennConnect4 = lambda  **kwargs: _Penn("connect-4",  **kwargs)
-PennShuttle = lambda  **kwargs: _Penn("shuttle",  **kwargs)
-PennSleep = lambda  **kwargs: _Penn("sleep",  **kwargs)
+PennPoker = lambda **kwargs: _Penn("poker", **kwargs)
+PennFars = lambda **kwargs: _Penn("fars", **kwargs)
+PennKddcup = lambda **kwargs: _Penn("kddcup", **kwargs)
+PennConnect4 = lambda **kwargs: _Penn("connect-4", **kwargs)
+PennShuttle = lambda **kwargs: _Penn("shuttle", **kwargs)
+PennSleep = lambda **kwargs: _Penn("sleep", **kwargs)
