@@ -2,6 +2,12 @@ FROM ubuntu:16.04
 
 FROM nvidia/cuda:9.0-cudnn7-devel
 
+RUN apt-get update && apt-get install -y \
+    python3-dev \
+    python3 \
+    python3-pip \
+    language-pack-en-base
+
 # Python3 with pip3
 RUN pip3 install pip --upgrade
 
