@@ -146,7 +146,7 @@ class PreScinolOptimizer(_Workaround):
     """
 
     def __init__(self,
-                 alpha=1.5,
+                 alpha=1.125,
                  epsilon=1,
                  s0=0,
                  name="PreScinol",

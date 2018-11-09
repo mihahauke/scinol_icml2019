@@ -1,0 +1,59 @@
+optimizers:
+#  PreScinolDLOptimizer:
+#  PreScinol2DLOptimizer:
+#  PreScinolOptimizer:
+#  PreScinol2Optimizer:
+#  COCOBOptimizer:
+  tf.train.AdamOptimizer:
+#    - {learning_rate: 0.01 }
+#    - {learning_rate: 0.001 }
+#    - {learning_rate: 0.0001 }
+#  tf.train.GradientDescentOptimizer:
+#    - {learning_rate: 0.01 }
+#    - {learning_rate: 0.001 }
+#    - {learning_rate: 0.0001 }
+#  ScinolOptimizer:
+#  Scinol2Optimizer:
+#  NAGOptimizer:
+#    - {eta: 0.01 }
+#    - {eta: 0.001 }
+#    - {eta: 0.0001 }
+#  sNAGOptimizer:
+#    - {eta: 0.01 }
+#    - {eta: 0.001 }
+#    - {eta: 0.0001 }
+#  COCOBOptimizer0:
+#    - {L0: 0.1}
+#    - {alpha: 0}
+#    - {alpha: 100}
+#  tf.train.AdamOptimizer:
+#    - {learning_rate: 0.01 }
+#    - {learning_rate: 0.001 }
+#    - {learning_rate: 0.0001 }
+
+#  tf.train.RMSPropOptimizer:
+#    - {learning_rate: 0.01 }
+#    - {learning_rate: 0.001 }
+#    - {learning_rate: 0.0001 }
+#  tf.train.AdagradOptimizer:
+#    - {learning_rate: 0.01 }
+#    - {learning_rate: 0.001 }
+#    - {learning_rate: 0.0001 }
+
+models:
+  - lr0
+
+
+datasets:
+- Mnist
+#  - PennPoker
+#  - PennSleep
+#  - PennFars
+#  - PennKddcup
+#  - PennConnect4
+#  - PennShuttle
+
+train_batchsize: 1
+epochs: 30
+times: 1
+train_histograms: False
