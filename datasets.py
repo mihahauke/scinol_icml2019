@@ -66,7 +66,7 @@ class _Dataset():
 
         self.one_hot = one_hot
 
-        if self.one_hot and num_outputs > 2:
+        if self.one_hot:
             self.train[1] = _to_one_hot(self.train[1])
             self.test[1] = _to_one_hot(self.test[1])
         self.train_batchsize = train_batchsize
@@ -207,11 +207,12 @@ class _Penn(_Dataset):
 
         x, y = fetch_data(name, return_X_y=True, local_cache_dir=download_path)
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio)
+        num_outputs = len(np.unique(y))
         super(_Penn, self).__init__("Penn_" + name,
                                     train_data=(x_train, y_train),
                                     test_data=(x_test, y_test),
                                     input_shape=[x.shape[1]],
-                                    num_outputs=2,
+                                    num_outputs=num_outputs,
                                     seed=seed,
                                     *args, **kwargs)
 

@@ -98,6 +98,11 @@ def nn_1000_500_elu(inputs, output_num, dropout_switch):
               activation_fn=tf.nn.elu)
 
 
+def nn_500_500_elu(inputs, output_num, dropout_switch):
+    return nn(inputs, output_num, dropout_switch, layers=[500, 500],
+              activation_fn=tf.nn.elu)
+
+
 def cocob_cnn(inputs, outputs_num, dropout_switch):
     return cnn(
         inputs,

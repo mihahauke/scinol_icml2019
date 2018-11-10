@@ -39,10 +39,12 @@ class _Workaround(_BaseOptimizer):
         new_var_list = []
         for var in var_list:
             if "biases" in var.name:
-                self.inputs[var] = tf.constant(1.0, shape=[1])
+                x = tf.constant(1.0, shape=[1])
+                x2 = tf.constant(1.0, shape=[1])
             else:
-                # TODO avg???
-                self.inputs[var] = tf.reshape(tf.reduce_mean(self.raw_features, axis=0), [-1, 1])
+                x = tf.reshape(tf.reduce_mean(self.raw_features, axis=0), [-1, 1])
+                x2 = tf.reshape(tf.reduce_mean(self.raw_features ** 2, axis=0), [-1, 1])
+            self.inputs[var] = x, x2
             new_var_list.append(self._preapply_dense(var))
 
         new_t = tf.assign_add(self.t, 1)
@@ -71,14 +73,14 @@ class ScinolOptimizer(_Workaround):
                 self.create_const_init_slot(v, "beta", 1)
 
     def _preapply_dense(self, var):
-        x = self.inputs[var]
+        x,x2  = self.inputs[var]
         beta = self.get_slot(var, "beta")
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
         M = self.get_slot(var, "var_max")
 
         M = tf.assign(M, tf.maximum(M, tf.abs(x)))
-        beta = tf.assign(beta, tf.minimum(beta, self.epsilon * (S2 + M ** 2) / (x ** 2 * (self.t + 1))))
+        beta = tf.assign(beta, tf.minimum(beta, self.epsilon * (S2 + M ** 2) / (x2 * (self.t + 1))))
 
         theta = G / (S2 + M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
@@ -114,7 +116,7 @@ class Scinol2Optimizer(_Workaround):
                 self.create_const_init_slot(v, "eta", self.epsilon)
 
     def _preapply_dense(self, var):
-        x = self.inputs[var]
+        x, _ = self.inputs[var]
         eta = self.get_slot(var, "eta")
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
@@ -164,13 +166,13 @@ class PreScinolOptimizer(_Workaround):
                 # self._get_or_make_slot(v, v, "initial_var", self._name)
 
     def _preapply_dense(self, var):
-        x = self.inputs[var]
+        _, x2 = self.inputs[var]
         h = self.get_slot(var, "grads_sum")
         s2 = self.get_slot(var, "squared_grads_sum")
 
-        broadcasted_x = tf.broadcast_to(x, s2.shape)
-        s2 = tf.assign_add(s2, broadcasted_x ** 2)
-        new_var = self.epsilon * h / (self.alpha * s2) * tf.exp((h ** 2 + x ** 2) / (2 * self.alpha * s2))
+        broadcasted_x2 = tf.broadcast_to(x2, s2.shape)
+        s2 = tf.assign_add(s2, broadcasted_x2 )
+        new_var = self.epsilon * h / (self.alpha * s2) * tf.exp((h ** 2 + x2 ) / (2 * self.alpha * s2))
 
         # equivalent new_var[s2==0] = 0
         new_var = tf.where(tf.not_equal(s2, 0), new_var, tf.zeros_like(new_var))
@@ -208,16 +210,16 @@ class PreScinol2Optimizer(_Workaround):
                 self.create_const_init_slot(v, "eta", self.epsilon)
 
     def _preapply_dense(self, var):
-        x = self.inputs[var]
+        _, x2 = self.inputs[var]
         h = self.get_slot(var, "grads_sum")
         s2 = self.get_slot(var, "squared_grads_sum")
         eta = self.get_slot(var, "eta")
 
-        gamma = eta / self.alpha * tf.exp(-(h ** 2 * x ** 2) / (s2 * (s2 + x ** 2) * 2 * self.alpha))
+        gamma = eta / self.alpha * tf.exp(-(h ** 2 * x2) / (s2 * (s2 + x2) * 2 * self.alpha))
         gamma = tf.where(tf.not_equal(s2, 0), gamma, eta / self.alpha)
 
-        broadcasted_x = tf.broadcast_to(x, s2.shape)
-        new_s2 = tf.assign_add(s2, broadcasted_x ** 2)
+        broadcasted_x2 = tf.broadcast_to(x2, s2.shape)
+        new_s2 = tf.assign_add(s2, broadcasted_x2)
 
         new_var = gamma * h / new_s2
         new_var = tf.where(tf.not_equal(s2, 0), new_var, tf.zeros_like(new_var))
@@ -331,6 +333,7 @@ class NAGOptimizer(_Workaround):
         return new_var
 
     def _preapply_dense(self, var):
+        # TODO x2
         x = self.inputs[var]
         s = self.get_slot(var, "s")
 
