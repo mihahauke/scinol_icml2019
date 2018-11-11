@@ -36,6 +36,10 @@ MADELON_TEST_LABELS = UCI_DATASETS + "/madelon/" + "madelon_valid.labels"
 
 UCI_BANK_URL = UCI_DATASETS + "/00222/bank-additional.zip"
 
+UCI_CENSUS_URL = UCI_DATASETS + "/census-income-mld/census.tar.gz"
+
+UCI_COVTYPE_URL = UCI_DATASETS + "/covtype/covtype.data.gz"
+
 CIFAR_URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
 CIFAR_DOWNLOAD_DIR = '/tmp/cifar10_data'
 CIFAR_EXTRACT_PATH = 'cifar-10-batches-py'
@@ -271,16 +275,16 @@ class UCI_Bank(_Dataset):
         zip_ref.close()
 
         import pandas as pd
-        csv_file = os.path.join(download_path,"bank-additional/bank-additional-full.csv")
-        dataframe = pd.read_csv(csv_file,delimiter=";")
+        csv_file = os.path.join(download_path, "bank-additional/bank-additional-full.csv")
+        dataframe = pd.read_csv(csv_file, delimiter=";")
 
         y = np.zeros_like(dataframe["y"], dtype=np.int32)
-        y[dataframe["y"]=="yes"] = 1
-        dataframe.drop("y", axis=1,inplace=True)
-        dataframe =pd.get_dummies(dataframe)
+        y[dataframe["y"] == "yes"] = 1
+        dataframe.drop("y", axis=1, inplace=True)
+        dataframe = pd.get_dummies(dataframe, drop_first=True)
         x = np.float32(dataframe.values)
 
-        x_train, x_test, y_train, y_test =train_test_split(x, y, test_size=test_ratio, random_state=seed)
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio, random_state=seed)
 
         num_outputs = 2  # len(np.unique(y))
         super(UCI_Bank, self).__init__(name,
@@ -291,34 +295,88 @@ class UCI_Bank(_Dataset):
                                        *args, **kwargs)
 
 
-class Mnist(_Dataset):
-    def __init__(self, *args, **kwargs):
-        mnist_files = [MNIST_TRAIN_IMAGES_FILENAME,
-                       MNIST_TRAIN_LABELS_FILENAME,
-                       MNIST_TEST_IMAGES_FILENAME,
-                       MNIST_TEST_LABELS_FILENAME]
+class UCI_Census(_Dataset):
+    def __init__(self,
+                 name="UCI_Census",
+                 test_ratio=0.33,
+                 seed=None,
+                 *args, **kwargs):
+        # print("Fetching Census dataset. It may take a while.")
+        download_path = "/tmp/uci_census"
 
-        for filename in mnist_files:
-            self.maybe_download(MNIST_URL + filename, MNIST_DOWNLOAD_DIR)
+        self.maybe_download(UCI_CENSUS_URL, download_path)
 
-        print("Loading mnist data ...")
-        mnist_loader = MNIST(MNIST_DOWNLOAD_DIR)
-        mnist_loader.gz = True
-        train_images, train_labels = mnist_loader.load_training()
-        test_images, test_labels = mnist_loader.load_testing()
-        process_images = lambda im: (np.array(im).astype(np.float32) / 255.0).reshape((- 1, 28, 28, 1))
+        targzfile = os.path.join(download_path, UCI_CENSUS_URL.split("/")[-1])
 
-        train_images = process_images(train_images)
-        test_images = process_images(test_images)
-        train_labels = np.int64(train_labels)
-        test_labels = np.int64(test_labels)
+        tar = tarfile.open(targzfile, mode="r")
+        tar.extractall(download_path)
+        tar.close()
+        os.chmod(download_path + "/census-income.names", 0o770)
+        os.chmod(download_path + "/census-income.data", 0o770)
+        os.chmod(download_path + "/census-income.test", 0o770)
+        import pandas as pd
 
-        super(Mnist, self).__init__(name="mnist",
-                                    train_data=(train_images, train_labels),
-                                    test_data=(test_images, test_labels),
-                                    input_shape=MNIST_DATA_SHAPE,
-                                    num_outputs=MNIST_CLASSES_NUM,
-                                    *args, **kwargs)
+        train_x = pd.read_csv(download_path + "/census-income.data", header=None, delimiter=",")
+        test_x = pd.read_csv(download_path + "/census-income.test", header=None, delimiter=",")
+
+        labels_column = 41
+        x = pd.concat([train_x, test_x], axis=0)
+        y = np.zeros_like(x[labels_column], dtype=np.int32)
+        y[x[labels_column] == " 50000+."] = 1
+        x.drop(labels_column, axis=1, inplace=True)
+
+        x_object = x.select_dtypes(include=['object']).copy()
+        x_numerical = x.select_dtypes(exclude=['object']).copy()
+
+        x_object = pd.get_dummies(x_object, drop_first=True)
+
+        x = pd.concat([x_numerical, x_object], axis=1)
+        x = np.float32(x.values)
+
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio, random_state=seed)
+        num_outputs = 2  # len(np.unique(y))
+        super(UCI_Census, self).__init__(name,
+                                         train_data=(x_train, y_train),
+                                         test_data=(x_test, y_test),
+                                         input_shape=[x_train.shape[1]],
+                                         num_outputs=num_outputs,
+                                         *args, **kwargs)
+
+
+class UCI_Covertype(_Dataset):
+    def __init__(self,
+                 name="UCI_Covertype",
+                 test_ratio=0.33,
+                 seed=None,
+                 *args, **kwargs):
+        # print("Fetching Census dataset. It may take a while.")
+        download_path = "/tmp/uci_covertype"
+
+        self.maybe_download(UCI_COVTYPE_URL, download_path)
+
+        file = os.path.join(download_path, UCI_COVTYPE_URL.split("/")[-1])
+
+        tarfile.open(file, 'r:gz').extractall(download_path)
+
+        import pandas as pd
+        csv_file = os.path.join(download_path, "bank-additional/bank-additional-full.csv")
+        dataframe = pd.read_csv(csv_file, delimiter=";")
+
+        y = np.zeros_like(dataframe["y"], dtype=np.int32)
+        y[dataframe["y"] == "yes"] = 1
+        dataframe.drop("y", axis=1, inplace=True)
+        dataframe = pd.get_dummies(dataframe)
+        x = np.float32(dataframe.values)
+
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio, random_state=seed)
+
+        num_outputs = 2  # len(np.unique(y))
+        super(UCI_Covertype, self).__init__(name,
+                                            train_data=(x_train, y_train),
+                                            test_data=(x_test, y_test),
+                                            input_shape=[x_train.shape[1]],
+                                            num_outputs=num_outputs,
+                                            *args, **kwargs)
 
 
 class Mnist(_Dataset):
