@@ -356,21 +356,19 @@ class UCI_Covertype(_Dataset):
 
         file = os.path.join(download_path, UCI_COVTYPE_URL.split("/")[-1])
 
-        tarfile.open(file, 'r:gz').extractall(download_path)
-
+        import gzip
         import pandas as pd
-        csv_file = os.path.join(download_path, "bank-additional/bank-additional-full.csv")
-        dataframe = pd.read_csv(csv_file, delimiter=";")
+        gzfile = gzip.open(file, 'rb')
+        x = pd.read_csv(gzfile, delimiter=",",header=None)
 
-        y = np.zeros_like(dataframe["y"], dtype=np.int32)
-        y[dataframe["y"] == "yes"] = 1
-        dataframe.drop("y", axis=1, inplace=True)
-        dataframe = pd.get_dummies(dataframe)
-        x = np.float32(dataframe.values)
+        label_column = 54
+        y = np.int32(x[label_column].values)
+        x.drop(label_column, axis=1, inplace=True)
+        x = np.float32(x.values)
 
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio, random_state=seed)
 
-        num_outputs = 2  # len(np.unique(y))
+        num_outputs =  len(np.unique(y))
         super(UCI_Covertype, self).__init__(name,
                                             train_data=(x_train, y_train),
                                             test_data=(x_test, y_test),

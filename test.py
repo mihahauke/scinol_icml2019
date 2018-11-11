@@ -109,6 +109,14 @@ def test(
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
     batches_processed = 0
+
+    test_x, test_y = dataset.get_test_data()
+    test_summary = sess.run(all_summaries,
+                            feed_dict={x: test_x,
+                                       y_target: test_y,
+                                       dropout_switch: 0})
+    test_writer.add_summary(test_summary, batches_processed)
+
     for _ in trange(epochs, desc="{}_{}".format(optim_name, oargs).strip("_")):
         for bx, by in dataset.train_batches():
             batches_processed += 1
@@ -187,11 +195,15 @@ if __name__ == '__main__':
             print("Running optimizers for dataset: '{}', model: '{}'".format(dataset.get_name(), model_class))
             for optimizer_class, optimizer_args in sorted(optimizers, key=lambda x: x[0]):
                 for _ in range(config["times"]):
-                    test(
-                        args.logdir,
-                        dataset,
-                        model_class,
-                        optimizer_class,
-                        optimizer_args,
-                        tag=args.tag,
-                        **config)
+                    try:
+                        test(
+                            args.logdir,
+                            dataset,
+                            model_class,
+                            optimizer_class,
+                            optimizer_args,
+                            tag=args.tag,
+                            **config)
+                    except Exception as ex :
+                        print("ERROR: {} crashed".format(optimizer_class))
+
