@@ -1,10 +1,16 @@
 optimizers:
-#  PreScinolDLOptimizer:
-#  PreScinol2DLOptimizer:
-#  PreScinolOptimizer:
-#  PreScinol2Optimizer:
-#  COCOBOptimizer:
+  PreScinolDLOptimizer:
+  PreScinol2DLOptimizer:
+  ScinolOptimizer:
+  Scinol2Optimizer:
+  PreScinolOptimizer:
+  PreScinol2Optimizer:
+  COCOBOptimizer:
   tf.train.AdamOptimizer:
+#    - {learning_rate: 0.01 }
+#    - {learning_rate: 0.001 }
+#    - {learning_rate: 0.0001 }
+  tf.train.AdagradOptimizer:
 #    - {learning_rate: 0.01 }
 #    - {learning_rate: 0.001 }
 #    - {learning_rate: 0.0001 }
@@ -12,8 +18,14 @@ optimizers:
 #    - {learning_rate: 0.01 }
 #    - {learning_rate: 0.001 }
 #    - {learning_rate: 0.0001 }
-#  ScinolOptimizer:
-#  Scinol2Optimizer:
+#    - {learning_rate: 0.01 }
+#    - {learning_rate: 0.001 }
+#    - {learning_rate: 0.0001 }
+#  tf.train.GradientDescentOptimizer:
+#    - {learning_rate: 0.01 }
+#    - {learning_rate: 0.001 }
+#    - {learning_rate: 0.0001 }
+
 #  NAGOptimizer:
 #    - {eta: 0.01 }
 #    - {eta: 0.001 }
@@ -45,13 +57,19 @@ models:
 
 
 datasets:
-- Mnist
+  - Mnist
+  - UCI_Madelon
+  - UCI_Bank
+  - UCI_Census
+  - UCI_Covertype
+  - PennShuttle
+  
 #  - PennPoker
 #  - PennSleep
 #  - PennFars
 #  - PennKddcup
 #  - PennConnect4
-#  - PennShuttle
+
 
 train_batchsize: 1
 epochs: 30
