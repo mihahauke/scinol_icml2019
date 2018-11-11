@@ -34,6 +34,8 @@ MADELON_TRAIN_LABELS = UCI_MADELON + "/madelon_train.labels"
 MADELON_TEST = UCI_MADELON + "/madelon_valid.data"
 MADELON_TEST_LABELS = UCI_DATASETS + "/madelon/" + "madelon_valid.labels"
 
+UCI_BANK_URL = UCI_DATASETS + "/00222/bank-additional.zip"
+
 CIFAR_URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
 CIFAR_DOWNLOAD_DIR = '/tmp/cifar10_data'
 CIFAR_EXTRACT_PATH = 'cifar-10-batches-py'
@@ -210,7 +212,7 @@ class _Penn(_Dataset):
         if seed is not None:
             raise NotImplementedError()
 
-        print("Fetching '{}' dataset. It may take a while.".format(name))
+        # print("Fetching '{}' dataset. It may take a while.".format(name))
         download_path = "/tmp/penn_{}".format(name)
         os.makedirs(download_path, exist_ok=True)
 
@@ -226,13 +228,12 @@ class _Penn(_Dataset):
                                     *args, **kwargs)
 
 
-class Madelon(_Dataset):
+class UCI_Madelon(_Dataset):
     def __init__(self,
-                 name="Madelon",
+                 name="UCI_Madelon",
                  *args, **kwargs):
-        print("Fetching Madelon dataset. It may take a while.")
-        download_path = "/tmp/madelon"
-        os.makedirs(download_path, exist_ok=True)
+        # print("Fetching Madelon dataset. It may take a while.")
+        download_path = "/tmp/uci_madelon"
 
         def download_and_extract(url):
             self.maybe_download(url, download_path)
@@ -245,12 +246,79 @@ class Madelon(_Dataset):
         y_test = (download_and_extract(MADELON_TEST_LABELS) + 1) / 2
 
         num_outputs = 2  # len(np.unique(y))
-        super(Madelon, self).__init__(name,
-                                      train_data=(x_train, y_train),
-                                      test_data=(x_test, y_test),
-                                      input_shape=[x_train.shape[1]],
-                                      num_outputs=num_outputs,
-                                      *args, **kwargs)
+        super(UCI_Madelon, self).__init__(name,
+                                          train_data=(x_train, y_train),
+                                          test_data=(x_test, y_test),
+                                          input_shape=[x_train.shape[1]],
+                                          num_outputs=num_outputs,
+                                          *args, **kwargs)
+
+
+class UCI_Bank(_Dataset):
+    def __init__(self,
+                 name="UCI_Bank",
+                 test_ratio=0.33,
+                 seed=None,
+                 *args, **kwargs):
+        # print("Fetching Bank dataset. It may take a while.")
+        download_path = "/tmp/uci_bank"
+
+        self.maybe_download(UCI_BANK_URL, download_path)
+        file = os.path.join(download_path, UCI_BANK_URL.split("/")[-1])
+        import zipfile
+        zip_ref = zipfile.ZipFile(file, 'r')
+        zip_ref.extractall(download_path)
+        zip_ref.close()
+
+        import pandas as pd
+        csv_file = os.path.join(download_path,"bank-additional/bank-additional-full.csv")
+        dataframe = pd.read_csv(csv_file,delimiter=";")
+
+        y = np.zeros_like(dataframe["y"], dtype=np.int32)
+        y[dataframe["y"]=="yes"] = 1
+        dataframe.drop("y", axis=1,inplace=True)
+        dataframe =pd.get_dummies(dataframe)
+        x = np.float32(dataframe.values)
+
+        x_train, x_test, y_train, y_test =train_test_split(x, y, test_size=test_ratio, random_state=seed)
+
+        num_outputs = 2  # len(np.unique(y))
+        super(UCI_Bank, self).__init__(name,
+                                       train_data=(x_train, y_train),
+                                       test_data=(x_test, y_test),
+                                       input_shape=[x_train.shape[1]],
+                                       num_outputs=num_outputs,
+                                       *args, **kwargs)
+
+
+class Mnist(_Dataset):
+    def __init__(self, *args, **kwargs):
+        mnist_files = [MNIST_TRAIN_IMAGES_FILENAME,
+                       MNIST_TRAIN_LABELS_FILENAME,
+                       MNIST_TEST_IMAGES_FILENAME,
+                       MNIST_TEST_LABELS_FILENAME]
+
+        for filename in mnist_files:
+            self.maybe_download(MNIST_URL + filename, MNIST_DOWNLOAD_DIR)
+
+        print("Loading mnist data ...")
+        mnist_loader = MNIST(MNIST_DOWNLOAD_DIR)
+        mnist_loader.gz = True
+        train_images, train_labels = mnist_loader.load_training()
+        test_images, test_labels = mnist_loader.load_testing()
+        process_images = lambda im: (np.array(im).astype(np.float32) / 255.0).reshape((- 1, 28, 28, 1))
+
+        train_images = process_images(train_images)
+        test_images = process_images(test_images)
+        train_labels = np.int64(train_labels)
+        test_labels = np.int64(test_labels)
+
+        super(Mnist, self).__init__(name="mnist",
+                                    train_data=(train_images, train_labels),
+                                    test_data=(test_images, test_labels),
+                                    input_shape=MNIST_DATA_SHAPE,
+                                    num_outputs=MNIST_CLASSES_NUM,
+                                    *args, **kwargs)
 
 
 class Mnist(_Dataset):
