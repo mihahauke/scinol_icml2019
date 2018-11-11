@@ -52,9 +52,9 @@ def test(
 
     if dataset.outputs_num == 1:
         y_target = tf.placeholder(tf.float32, [None], name='y-input')
-        flat_y = tf.reshape(y,[-1])
+        flat_y = tf.reshape(y, [-1])
         cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_target, logits=flat_y)
-        correct_predictions = tf.equal(tf.cast(tf.greater(flat_y,0),tf.float32), y_target)
+        correct_predictions = tf.equal(tf.cast(tf.greater(flat_y, 0), tf.float32), y_target)
     else:
         if one_hot:
             y_target = tf.placeholder(tf.float32, [None, dataset.outputs_num], name='y-input')
@@ -81,12 +81,9 @@ def test(
     grads_and_vars = optimizer.compute_gradients(loss)
     train_step = optimizer.apply_gradients(grads_and_vars)
 
-
-
     summaries_prefix = dataset.get_name()
     hist_summaries = []
     for grad, var in grads_and_vars:
-
         g_summary = tf.summary.histogram('{}/{}/gradients/{}'.format(summaries_prefix, model, var.name), grad)
         v_summary = tf.summary.histogram('{}/{}/{}'.format(summaries_prefix, model, var.name), var)
         hist_summaries.append(g_summary)

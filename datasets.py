@@ -27,6 +27,13 @@ MNIST_TRAIN_LABELS_FILENAME = 'train-labels-idx1-ubyte.gz'
 MNIST_TEST_IMAGES_FILENAME = 't10k-images-idx3-ubyte.gz'
 MNIST_TEST_LABELS_FILENAME = 't10k-labels-idx1-ubyte.gz'
 
+UCI_DATASETS = "http://archive.ics.uci.edu/ml/machine-learning-databases"
+UCI_MADELON = UCI_DATASETS + "/madelon/MADELON"
+MADELON_TRAIN = UCI_MADELON + "/madelon_train.data"
+MADELON_TRAIN_LABELS = UCI_MADELON + "/madelon_train.labels"
+MADELON_TEST = UCI_MADELON + "/madelon_valid.data"
+MADELON_TEST_LABELS = UCI_DATASETS + "/madelon/" + "madelon_valid.labels"
+
 CIFAR_URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
 CIFAR_DOWNLOAD_DIR = '/tmp/cifar10_data'
 CIFAR_EXTRACT_PATH = 'cifar-10-batches-py'
@@ -111,6 +118,7 @@ class _Dataset():
         filename = url.split('/')[-1]
         filepath = os.path.join(download_path, filename)
         if not os.path.exists(filepath):
+            # TODO use tqdm
             def _progress(count, block_size, total_size):
                 sys.stdout.write('\rDownloading %s %.1f%%' % (filename,
                                                               float(count * block_size) / float(
@@ -119,6 +127,7 @@ class _Dataset():
 
             filepath, _ = urllib.request.urlretrieve(url, filepath, _progress)
             statinfo = os.stat(filepath)
+            print()
             print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
 
 
@@ -206,7 +215,7 @@ class _Penn(_Dataset):
         os.makedirs(download_path, exist_ok=True)
 
         x, y = fetch_data(name, return_X_y=True, local_cache_dir=download_path)
-        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio)
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio, random_state=seed)
         num_outputs = len(np.unique(y))
         super(_Penn, self).__init__("Penn_" + name,
                                     train_data=(x_train, y_train),
@@ -215,6 +224,33 @@ class _Penn(_Dataset):
                                     num_outputs=num_outputs,
                                     seed=seed,
                                     *args, **kwargs)
+
+
+class Madelon(_Dataset):
+    def __init__(self,
+                 name="Madelon",
+                 *args, **kwargs):
+        print("Fetching Madelon dataset. It may take a while.")
+        download_path = "/tmp/madelon"
+        os.makedirs(download_path, exist_ok=True)
+
+        def download_and_extract(url):
+            self.maybe_download(url, download_path)
+            file = os.path.join(download_path, url.split("/")[-1])
+            return np.genfromtxt(file, delimiter=" ")
+
+        x_train = download_and_extract(MADELON_TRAIN)
+        x_test = download_and_extract(MADELON_TEST)
+        y_train = (download_and_extract(MADELON_TRAIN_LABELS) + 1) / 2
+        y_test = (download_and_extract(MADELON_TEST_LABELS) + 1) / 2
+
+        num_outputs = 2  # len(np.unique(y))
+        super(Madelon, self).__init__(name,
+                                      train_data=(x_train, y_train),
+                                      test_data=(x_test, y_test),
+                                      input_shape=[x_train.shape[1]],
+                                      num_outputs=num_outputs,
+                                      *args, **kwargs)
 
 
 class Mnist(_Dataset):
@@ -262,7 +298,7 @@ class Synthetic(_Dataset):
             loc=0,
             seed=seed)
 
-        x_train, x_test, y_train, y_test = train_test_split(x, labels, test_size=test_ratio)
+        x_train, x_test, y_train, y_test = train_test_split(x, labels, test_size=test_ratio, random_state=seed)
 
         super(Synthetic, self).__init__(
             name=name,
