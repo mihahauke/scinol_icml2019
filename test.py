@@ -206,4 +206,7 @@ if __name__ == '__main__':
                             **config)
                     except Exception as ex :
                         print("ERROR: {} crashed".format(optimizer_class))
+                        print("=============== EXCETPION: ===============")
+                        print(ex)
+                        print("==========================================")
 

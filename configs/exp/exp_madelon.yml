@@ -1,0 +1,37 @@
+optimizers:
+  PreScinolDLOptimizer:
+  PreScinol2DLOptimizer:
+  PreScinolOptimizer:
+  PreScinol2Optimizer:
+  ScinolOptimizer:
+  Scinol2Optimizer:
+  COCOBOptimizer:
+  tf.train.AdamOptimizer:
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+    - {learning_rate: 0.00001 }
+  tf.train.AdagradOptimizer:
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+    - {learning_rate: 0.00001 }
+  tf.train.GradientDescentOptimizer:
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+    - {learning_rate: 0.00001 }
+
+models:
+  - lr0
+
+
+datasets:
+  - UCI_Madelon
+
+
+
+train_batchsize: 1
+epochs: 30
+times: 1
+train_histograms: False
