@@ -7,13 +7,12 @@ TAG="$1"
 SCRIPT="$2"
 ARGS="${@:3}"
 
-LOGDIR="~/slurm_logs"
-LOGFILE=${LOGDIR}/`hostname`_${TAG}_`date +"%d_%H_%M_%S"`.log
+LOGDIR="/home/mkempka/slurm_logs"
+LOGFILE=${LOGDIR}/${TAG}_`hostname`_${TAG}_`date +"%d_%H_%M_%S"`.log
 
 sbatch  -J ${TAG} \
-        --exclusive \
-        -p lab-ci \
-	    -o ${LOGFILE} \
-	    ${SCRIPT} ${ARGS}
+	-p lab-ci \
+	-o ${LOGFILE} \
+	 ${SCRIPT} ${ARGS}
 
 
