@@ -35,6 +35,7 @@ def test(
         one_hot=DEFAULT_ONE_HOT,
         train_histograms=False,
         tag=None,
+        train_logs=True,
         *args,
         **kwargs):
     # TODO add tag support
@@ -103,7 +104,10 @@ def test(
     oargs = "_".join(k[0] + str(v) for k, v in sorted(optimizer_args.items()))
     prefix = "{}/{}/{}/{}/{}_{}".format(logdir, dataset.get_name(), model, time, optim_name, oargs)
     prefix = prefix.strip("_")
-    train_writer = tf.summary.FileWriter(prefix + '/train', flush_secs=FLUSH_SECS)
+    if train_logs:
+        train_writer = tf.summary.FileWriter(prefix + '/train', flush_secs=FLUSH_SECS)
+    else:
+        train_writer = None
     test_writer = tf.summary.FileWriter(prefix + '/test', flush_secs=FLUSH_SECS)
 
     sess = tf.Session()
@@ -123,11 +127,17 @@ def test(
             # TODO workaround
             if pretrain_step is not None:
                 sess.run(pretrain_step, feed_dict={x: bx, dropout_switch: 1})
-            train_summary, _ = sess.run([train_summaries, train_step],
-                                        feed_dict={x: bx,
-                                                   y_target: by,
-                                                   dropout_switch: 1})
-            train_writer.add_summary(train_summary, batches_processed)
+            if train_logs:
+                train_summary, _ = sess.run([train_summaries, train_step],
+                                            feed_dict={x: bx,
+                                                       y_target: by,
+                                                       dropout_switch: 1})
+                train_writer.add_summary(train_summary, batches_processed)
+            else:
+                sess.run(train_step,
+                         feed_dict={x: bx,
+                                    y_target: by,
+                                    dropout_switch: 1})
         # TODO change it to minibatches
         test_x, test_y = dataset.get_test_data()
         test_summary = sess.run(all_summaries,
@@ -204,9 +214,8 @@ if __name__ == '__main__':
                             optimizer_args,
                             tag=args.tag,
                             **config)
-                    except Exception as ex :
+                    except Exception as ex:
                         print("ERROR: {} crashed".format(optimizer_class))
                         print("=============== EXCETPION: ===============")
                         print(ex)
                         print("==========================================")
-

@@ -25,7 +25,12 @@ class Tree(object):
         self.architectures = set()
         self.algorithms = set()
 
-    def load(self, files, filters, excludes):
+    def load(self, files, filters, excludes, verbose=False):
+        if verbose:
+            print("Loading {} files...".format(len(files)))
+        if verbose:
+            from tqdm import tqdm
+            files = tqdm(files)
         for filename in files:
             tokens = [x.strip("_") for x in filename.strip().split("/")]
             stop = False
@@ -192,12 +197,14 @@ if __name__ == "__main__":
     parser.add_argument("-x", "--exclude", nargs="*", default=[], help="TODO")
     parser.add_argument("-l", "--list", action="store_true")
     parser.add_argument("--extension", default="pdf")
+    parser.add_argument("--verbose","-v",action="store_true",default=False)
     args = parser.parse_args()
 
     all_files = glob.glob('{}/**/*events*'.format(args.log_dir), recursive=True)
-
     tree = Tree()
-    tree.load(all_files, args.filters, args.exclude)
+    if args.verbose:
+        print("Parsing directories...")
+    tree.load(all_files, args.filters, args.exclude, args.verbose)
 
     if args.list:
         tree.print()
