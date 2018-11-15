@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 from tensorflow.python.training import optimizer
 
-SMALL_NUMBER = 1e-6
+SMALL_NUMBER = 1e-5
 
 
 class _BaseOptimizer(optimizer.Optimizer):
