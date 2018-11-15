@@ -64,14 +64,17 @@ class Tree(object):
             acc = []
             entropy = []
             steps = []
-            for event in tf.train.summary_iterator(filename):
-                if event.HasField('summary'):
-                    steps.append(event.step)
-                    for value in event.summary.value:
-                        if value.tag.endswith("/accuracy"):
-                            acc.append(value.simple_value)
-                        elif value.tag.endswith("/cross_entropy"):
-                            entropy.append(value.simple_value)
+            try:
+                for event in tf.train.summary_iterator(filename):
+                    if event.HasField('summary'):
+                        steps.append(event.step)
+                        for value in event.summary.value:
+                            if value.tag.endswith("/accuracy"):
+                                acc.append(value.simple_value)
+                            elif value.tag.endswith("/cross_entropy"):
+                                entropy.append(value.simple_value)
+            except:
+                print("Could not read '{}'".format(filename))
 
             data = [steps, entropy]
             self._add_leaf(tokens_list, data)
@@ -265,7 +268,6 @@ if __name__ == "__main__":
     print("Saving graphs to: '{}'".format(args.output_dir))
 
     for key in tqdm(all_keys, leave=False):
-        break
         dataset, mode, architecture, algo = key
         try:
             plot_with_std(tree,
@@ -295,7 +297,7 @@ if __name__ == "__main__":
 
     for [d, m, a], tag_set in tqdm(joined_keys.items(), leave=False):
         try:
-            tag_set = sorted(tag_set,key=lambda x: x[3])
+            tag_set = sorted(tag_set, key=lambda x: x[3])
             plot_with_std(tree,
                           tag_sets=tag_set,
                           y_axis="cross entropy",
