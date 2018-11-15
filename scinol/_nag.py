@@ -16,6 +16,7 @@ class NAGOptimizer(_PreApplyOptimizer):
         self.eta = learning_rate
         self.s0 = s0
         self.N = tf.Variable(self.s0, trainable=False)
+        self.t = tf.train.get_or_create_global_step()
 
     def _create_slots(self, var_list):
         for v in var_list:
@@ -26,24 +27,21 @@ class NAGOptimizer(_PreApplyOptimizer):
     def _apply_dense(self, grad, var):
         s = self.get_slot(var, "s")
         G = self.get_slot(var, "G")
-        t = self.t
         N = self.N
-
+        t = tf.to_float(tf.assign_add(self.t, 1))
         G = tf.assign_add(G, grad ** 2)
 
         new_var = tf.assign_add(var, -self.eta * (t / N) ** 0.5 * grad / (s * G ** 0.5))
         return new_var
 
     def _preapply_dense(self, var):
-        # TODO x2
-        x = self.inputs[var]
+        x, x2 = self.inputs[var]
         s = self.get_slot(var, "s")
 
         new_s = tf.assign_add(s, tf.maximum(s, tf.abs(x)))
         new_var = tf.assign(var, var * s / new_s)
-        new_N = tf.assign_add(self.N, tf.reduce_sum((x / new_s) ** 2))
-        new_t = tf.assign_add(self.t, 1)
-        return new_var, new_N, new_t
+        new_N = tf.assign_add(self.N, tf.reduce_sum(x2 / new_s ** 2))
+        return new_var, new_N
 
 
 class sNAGOptimizer(_PreApplyOptimizer):

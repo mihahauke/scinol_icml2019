@@ -8,7 +8,7 @@ SMALL_NUMBER = 1e-6
 class _BaseOptimizer(optimizer.Optimizer):
     def __init__(self, *args, **kwargs):
         super(_BaseOptimizer, self).__init__(*args, **kwargs)
-        self.t = tf.Variable(0.0, trainable=False)
+
 
     def create_const_init_slot(self, v, name, value=0):
         initializer = tf.initializers.constant(value, dtype=v.dtype)
@@ -47,8 +47,7 @@ class _PreApplyOptimizer(_BaseOptimizer):
             self.inputs[var] = x, x2
             new_var_list.append(self._preapply_dense(var))
 
-        new_t = tf.assign_add(self.t, 1)
-        return tf.group(new_var_list + [new_t])
+        return tf.group(new_var_list)
 
 
 class ScinolOptimizer(_PreApplyOptimizer):
@@ -61,7 +60,7 @@ class ScinolOptimizer(_PreApplyOptimizer):
         super(ScinolOptimizer, self).__init__(use_locking, name)
         self.epsilon = float(epsilon)
         self.s0 = s0
-        # TODO remove workaround:
+        self.t = tf.train.get_or_create_global_step()
 
     def _create_slots(self, var_list):
         for v in var_list:
@@ -78,9 +77,10 @@ class ScinolOptimizer(_PreApplyOptimizer):
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
         M = self.get_slot(var, "var_max")
+        t = tf.to_float(tf.assign_add(self.t, 1))
 
         M = tf.assign(M, tf.maximum(M, tf.abs(x)))
-        beta = tf.assign(beta, tf.minimum(beta, self.epsilon * (S2 + M ** 2) / (x2 * (self.t + 1))))
+        beta = tf.assign(beta, tf.minimum(beta, self.epsilon * (S2 + M ** 2) / (x2 * (t + 1))))
 
         theta = G / (S2 + M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
