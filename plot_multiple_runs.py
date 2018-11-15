@@ -38,11 +38,12 @@ class Tree(object):
             files = tqdm(files)
         for filename in files:
             tokens = [x.strip("_") for x in filename.strip().split("/")]
-            stop = False
-            for filter in filters:
-                if filter not in tokens:
-                    stop = True
-                    break
+            stop = True
+            for orfilter in filters:
+                for token in tokens:
+                    if orfilter  in token:
+                        stop = False
+                        break
             for ex, t in it.product(excludes, tokens):
                 if ex in t:
                     stop = True
@@ -239,14 +240,29 @@ if __name__ == "__main__":
     parser = ArgumentParser("Plots multiple runs of benchmark algorithms.",
                             formatter_class=ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("-o", "--output-dir", dest="output_dir", default="graphs")
-    parser.add_argument("--log_dir", default="tb_logs")
-    parser.add_argument("-i", "--interactive", action="store_true", help="TODO")
-    parser.add_argument("-f", "--filters", nargs="*", default=[], help="TODO")
-    parser.add_argument("-x", "--exclude", nargs="*", default=[], help="TODO")
-    parser.add_argument("-l", "--list", action="store_true")
-    parser.add_argument("--extension", default="pdf")
-    parser.add_argument("--verbose", "-v", action="store_true", default=False)
+    parser.add_argument("-o", "--output-dir",
+                        dest="output_dir",
+                        default="graphs")
+    parser.add_argument("--log_dir",
+                        default="tb_logs")
+    parser.add_argument("-i", "--interactive",
+                        action="store_true",
+                        help="TODO")
+    parser.add_argument("-f", "--filters",
+                        nargs="*",
+                        default=[],
+                        help="TODO")
+    parser.add_argument("-x", "--exclude",
+                        nargs="*",
+                        default=[],
+                        help="TODO")
+    parser.add_argument("-l", "--list",
+                        action="store_true")
+    parser.add_argument("--extension","-e",
+                        default="pdf")
+    parser.add_argument("--verbose", "-v",
+                        action="store_true",
+                        default=False)
     args = parser.parse_args()
 
     all_files = glob.glob('{}/**/*events*'.format(args.log_dir), recursive=True)
@@ -264,29 +280,31 @@ if __name__ == "__main__":
     all_keys = list(tree.random_access_data.keys())
     print("Saving graphs to: '{}'".format(args.output_dir))
 
-    for key in tqdm(all_keys, leave=False):
-        dataset, mode, architecture, algo = key
-        try:
-            plot_with_std(tree,
-                          tag_sets=[key],
-                          y_axis="cross entropy",
-                          title="{}: {}".format(dataset, algo),
-                          err_style="unit_traces")
+    # for key in tqdm(all_keys, leave=False):
+    #     dataset, mode, architecture, algo = key
+    #     try:
+    #         plot_with_std(tree,
+    #                       tag_sets=[key],
+    #                       y_axis="cross entropy",
+    #                       title="{}: {}".format(dataset, algo),
+    #                       err_style="unit_traces")
+    #
+    #         save_plot(os.path.join(args.output_dir, dataset, mode, architecture, algo),
+    #                   extension=args.extension)
+    #     except Exception as ex:
+    #         print("Failed for: {}".format(key))
+    #         print("Data shape: {}".format(tree.get(key).shape))
+    #         if args.verbose:
+    #             print(" ============== EXCEPTION ============")
+    #             print(ex)
+    #             traceback.print_exc()
+    #             print(" =====================================")
+    #         exit(0)
 
-            save_plot(os.path.join(args.output_dir, dataset, mode, architecture, algo),
-                      extension=args.extension)
-        except Exception as ex:
-            print("Failed for: {}".format(key))
-            print("Data shape: {}".format(tree.get(key).shape))
-            if args.verbose:
-                print(" ============== EXCEPTION ============")
-                print(ex)
-                traceback.print_exc()
-                print(" =====================================")
-            exit(0)
-    joined_keys = {}
+
     # TODO it's ugly af ... refactor it ....
     # TODO and defaq does it dooo XD?
+    joined_keys = {}
     for d, m, a, algo in all_keys:
         if not (d, m, a) in joined_keys:
             joined_keys[(d, m, a)] = []
