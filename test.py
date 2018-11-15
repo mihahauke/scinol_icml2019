@@ -1,19 +1,15 @@
 #!/usr/bin/env python3
 
-
+import traceback
 import argparse
 from tqdm import trange
 import ruamel.yaml as yaml
 from time import strftime
 
-import tensorflow as tf
 from collections import defaultdict
-from adalbert import *
-from scinol import *
-from cocob import *
-import itertools as it
 from models import *
 from datasets import *
+from short_names import *
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 DEFAULT_TIMES = 1
@@ -218,4 +214,5 @@ if __name__ == '__main__':
                         print("ERROR: {} crashed".format(optimizer_class))
                         print("=============== EXCETPION: ===============")
                         print(ex)
+                        traceback.print_exc()
                         print("==========================================")

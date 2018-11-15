@@ -22,7 +22,6 @@ class Tree(object):
     def __init__(self, verbose=False):
         def recursive_defaultdict_factory():
             return defaultdict(recursive_defaultdict_factory)
-
         self.root = defaultdict(recursive_defaultdict_factory)
         self.random_access_data = defaultdict(list)
         self.datasets = set()
@@ -171,6 +170,7 @@ def plot_with_std(tree,
                   title="TODO",
                   y_axis="TODO",
                   verbose=False,
+                  x_axis_label="# iterations",
                   **kwargs):
     data = []
     steps = None
@@ -205,12 +205,9 @@ def plot_with_std(tree,
     else:
         tag_sets = None
         data = data[0]
-    x_axis_label = "# of minibatches"
-
     default_kwargs = {
         "err_style": "ci_band",
         "ci": "sd",
-
     }
     default_kwargs.update(kwargs)
     with warnings.catch_warnings():
