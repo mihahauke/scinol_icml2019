@@ -1,6 +1,6 @@
 optimizers:
-  PreScinolOptimizer:
-  PreScinol2Optimizer:
+  prescinol:
+  prescinol2:
 #  adam:
 #    - {learning_rate: 1.0 }
 #    - {learning_rate: 0.1 }
@@ -39,3 +39,4 @@ train_batchsize: 1
 epochs: 60
 times: 1
 train_histograms: False
+train_logs: False

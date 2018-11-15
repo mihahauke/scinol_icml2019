@@ -40,3 +40,4 @@ train_batchsize: 1
 epochs: 20
 times: 1
 train_histograms: False
+train_logs: False

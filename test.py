@@ -148,71 +148,75 @@ def test(
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--logdir",
-        "-l",
-        type=str,
-        default=DEFAULT_TB_LOGDIR,
-        help="Summaries log directory")
+    try:
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--logdir",
+            "-l",
+            type=str,
+            default=DEFAULT_TB_LOGDIR,
+            help="Summaries log directory")
 
-    parser.add_argument(
-        "--config",
-        "-c",
-        dest="config",
-        metavar="YAML_FILE",
-        type=str,
-        default="configs/mnist_all.yml",
-        help="config file in yaml")
-    parser.add_argument(
-        "--tag",
-        metavar="tag",
-        type=str,
-        help="runtag for tensorboard",
-        default=None)
+        parser.add_argument(
+            "--config",
+            "-c",
+            dest="config",
+            metavar="YAML_FILE",
+            type=str,
+            default="configs/mnist_all.yml",
+            help="config file in yaml")
+        parser.add_argument(
+            "--tag",
+            metavar="tag",
+            type=str,
+            help="runtag for tensorboard",
+            default=None)
 
-    args = parser.parse_args()
+        args = parser.parse_args()
 
-    config = defaultdict(lambda: None, yaml.safe_load(open(args.config)))
-    optimizers = []
+        config = defaultdict(lambda: None, yaml.safe_load(open(args.config)))
+        optimizers = []
 
-    for optim_class, instances in config["optimizers"].items():
-        if not isinstance(instances, list):
-            optimizers.append((optim_class, {}))
+        for optim_class, instances in config["optimizers"].items():
+            if not isinstance(instances, list):
+                optimizers.append((optim_class, {}))
+            else:
+                for optim_args in instances:
+                    if optim_args is None:
+                        optim_args = {}
+                    optimizers.append((optim_class, optim_args))
+
+        print("Optimizers:", len(optimizers))
+        print("Models:", len(config["models"]))
+        print("Tests in total:", len(optimizers) * len(config["models"]))
+
+        if "datasets" not in config:
+            datasets = [config["dataset"]]
         else:
-            for optim_args in instances:
-                if optim_args is None:
-                    optim_args = {}
-                optimizers.append((optim_class, optim_args))
+            datasets = config["datasets"]
 
-    print("Optimizers:", len(optimizers))
-    print("Models:", len(config["models"]))
-    print("Tests in total:", len(optimizers) * len(config["models"]))
+        for dataset_name in datasets:
+            dataset = eval(dataset_name)(**config)
 
-    if "datasets" not in config:
-        datasets = [config["dataset"]]
-    else:
-        datasets = config["datasets"]
-
-    for dataset_name in datasets:
-        dataset = eval(dataset_name)(**config)
-
-        for model_class in config["models"]:
-            print("Running optimizers for dataset: '{}', model: '{}'".format(dataset.get_name(), model_class))
-            for optimizer_class, optimizer_args in sorted(optimizers, key=lambda x: x[0]):
-                for _ in range(config["times"]):
-                    try:
-                        test(
-                            args.logdir,
-                            dataset,
-                            model_class,
-                            optimizer_class,
-                            optimizer_args,
-                            tag=args.tag,
-                            **config)
-                    except Exception as ex:
-                        print("ERROR: {} crashed".format(optimizer_class))
-                        print("=============== EXCETPION: ===============")
-                        print(ex)
-                        traceback.print_exc()
-                        print("==========================================")
+            for model_class in config["models"]:
+                print("Running optimizers for dataset: '{}', model: '{}'".format(dataset.get_name(), model_class))
+                for optimizer_class, optimizer_args in sorted(optimizers, key=lambda x: x[0]):
+                    for _ in range(config["times"]):
+                        try:
+                            test(
+                                args.logdir,
+                                dataset,
+                                model_class,
+                                optimizer_class,
+                                optimizer_args,
+                                tag=args.tag,
+                                **config)
+                        except Exception as ex:
+                            print("ERROR: {} crashed".format(optimizer_class))
+                            print("=============== EXCETPION: ===============")
+                            print(ex)
+                            traceback.print_exc()
+                            print("==========================================")
+    except KeyboardInterrupt:
+        print()
+        print("Keyboard interrupt. Aborting ...")
