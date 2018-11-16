@@ -39,3 +39,4 @@ epochs: 10
 times: 1
 train_histograms: False
 train_logs: False
+no_tqdm: True

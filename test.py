@@ -2,7 +2,6 @@
 
 import traceback
 import argparse
-from tqdm import trange
 import ruamel.yaml as yaml
 from time import strftime
 
@@ -32,6 +31,7 @@ def test(
         train_histograms=False,
         tag=None,
         train_logs=True,
+        no_tqdm=False,
         *args,
         **kwargs):
     # TODO add tag support
@@ -116,7 +116,14 @@ def test(
                                        y_target: test_y,
                                        dropout_switch: 0})
     test_writer.add_summary(test_summary, batches_processed)
+    if no_tqdm:
+        def trange(n, *args, **kwargs):
+            for epoch in range(n):
+                print("Epoch {}/{}".format(epoch + 1, n))
+                yield epoch
 
+    else:
+        from tqdm import trange
     for _ in trange(epochs, desc="{}_{}".format(optim_name, oargs).strip("_")):
         for bx, by in dataset.train_batches():
             batches_processed += 1
@@ -142,7 +149,8 @@ def test(
                                            dropout_switch: 0})
         test_writer.add_summary(test_summary, batches_processed)
 
-    train_writer.close()
+    if train_writer is not None:
+        train_writer.close()
     test_writer.close()
     sess.close()
 
