@@ -95,6 +95,10 @@ class _Dataset():
         return self._outputs_num
 
     @property
+    def num_records(self):
+        return len(self.train[0]) + len(self.test[0])
+
+    @property
     def input_shape(self):
         return self._input_shape
 
@@ -359,7 +363,7 @@ class UCI_Covertype(_Dataset):
         import gzip
         import pandas as pd
         gzfile = gzip.open(file, 'rb')
-        x = pd.read_csv(gzfile, delimiter=",",header=None)
+        x = pd.read_csv(gzfile, delimiter=",", header=None)
 
         label_column = 54
         y = np.int32(x[label_column].values)
@@ -368,7 +372,7 @@ class UCI_Covertype(_Dataset):
 
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio, random_state=seed)
 
-        num_outputs =  len(np.unique(y))
+        num_outputs = len(np.unique(y))
         super(UCI_Covertype, self).__init__(name,
                                             train_data=(x_train, y_train),
                                             test_data=(x_test, y_test),
@@ -387,7 +391,7 @@ class Mnist(_Dataset):
         for filename in mnist_files:
             self.maybe_download(MNIST_URL + filename, MNIST_DOWNLOAD_DIR)
 
-        print("Loading mnist data ...")
+        # print("Loading mnist data ...")
         mnist_loader = MNIST(MNIST_DOWNLOAD_DIR)
         mnist_loader.gz = True
         train_images, train_labels = mnist_loader.load_training()

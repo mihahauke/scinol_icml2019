@@ -179,6 +179,12 @@ if __name__ == '__main__':
             type=str,
             help="runtag for tensorboard",
             default=None)
+        parser.add_argument(
+            "--show-datasets",
+            "-s",
+            action="store_true",
+            default=False,
+        )
 
         args = parser.parse_args()
 
@@ -203,9 +209,13 @@ if __name__ == '__main__':
         else:
             datasets = config["datasets"]
 
+        if args.show_datasets:
+            print("Name |num records num | input shape".format())
         for dataset_name in datasets:
             dataset = eval(dataset_name)(**config)
-
+            if args.show_datasets:
+                print("{}: {} {}".format( dataset_name, dataset.num_records,dataset.input_shape))
+                continue
             for model_class in config["models"]:
                 print("Running optimizers for dataset: '{}', model: '{}'".format(dataset.get_name(), model_class))
                 for optimizer_class, optimizer_args in sorted(optimizers, key=lambda x: x[0]):
