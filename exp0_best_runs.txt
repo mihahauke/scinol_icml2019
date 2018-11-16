@@ -1,0 +1,103 @@
+.
+├── mnist
+│   ├── adagrad_l0.1.png
+│   ├── adam_l0.0001.png
+│   ├── nag_l1.0.png
+│   ├── prescinol2.png
+│   ├── prescinol.png
+│   └── sgd_dsqrt_l1.0.png
+├── mnist_v2.png
+├── Penn_shuttle
+│   ├── adagrad_l0.01.png
+│   ├── adam_l0.0001.png
+│   ├── nag_l0.1.png
+│   ├── prescinol2.png
+│   ├── prescinol.png
+│   └── sgd_dsqrt_l0.0001.png
+├── Penn_shuttle_v2.png
+├── UCI_Bank
+│   ├── adagrad_l0.01.png
+│   ├── adam_l0.0001.png
+│   ├── nag_l1.0.png
+│   ├── prescinol2.png
+│   ├── prescinol.png
+│   └── sgd_dsqrt_l1e-05.png
+├── UCI_Bank_v2.png
+├── UCI_Census
+│   ├── adagrad_l0.01.png
+│   ├── adam_l0.0001.png
+│   ├── nag_l0.01.png
+│   ├── prescinol2.png
+│   ├── prescinol.png
+│   └── sgd_dsqrt_l1e-05.png
+├── UCI_Census_v2.png
+├── UCI_Covertype
+│   ├── adagrad_l0.01.png
+│   ├── adam_l0.0001.png
+│   ├── nag_l1.0.png
+│   ├── prescinol2.png
+│   ├── prescinol.png
+│   └── sgd_dsqrt_l1e-05.png
+├── UCI_Covertype_v2.png
+├── UCI_Madelon
+│   └── test
+│       └── lr0
+│           ├── adagrad_l0.0001.png
+│           ├── adam_l0.0001.png
+│           ├── nag_l0.0001.png
+│           ├── nag_l0.1.png
+│           ├── prescinol2.png
+│           ├── prescinol.png
+│           └── sgd_dsqrt_l1e-05.png
+└── UCI_Madelon_v2.png
+
+8 directories, 43 files
+./mnist_v2.png
+./Penn_shuttle_v2.png
+./UCI_Bank_v2.png
+./UCI_Census_v2.png
+./UCI_Covertype_v2.png
+./UCI_Madelon_v2.png
+
+./mnist:
+adagrad_l0.1.png
+adam_l0.0001.png
+nag_l1.0.png
+prescinol2.png
+prescinol.png
+sgd_dsqrt_l1.0.png
+
+./Penn_shuttle:
+adagrad_l0.01.png
+adam_l0.0001.png
+nag_l0.1.png
+prescinol2.png
+prescinol.png
+sgd_dsqrt_l0.0001.png
+
+./UCI_Bank:
+adagrad_l0.01.png
+adam_l0.0001.png
+nag_l1.0.png
+prescinol2.png
+prescinol.png
+sgd_dsqrt_l1e-05.png
+
+./UCI_Census:
+adagrad_l0.01.png
+adam_l0.0001.png
+nag_l0.01.png
+prescinol2.png
+prescinol.png
+sgd_dsqrt_l1e-05.png
+
+./UCI_Covertype:
+adagrad_l0.01.png
+adam_l0.0001.png
+nag_l1.0.png
+prescinol2.png
+prescinol.png
+sgd_dsqrt_l1e-05.png
+
+./UCI_Madelon:
+test
