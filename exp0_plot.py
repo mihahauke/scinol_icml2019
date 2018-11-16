@@ -18,7 +18,7 @@ from tqdm import tqdm
 names_dict = {
     "adam": "Adam",
     "adagrad": "AdaGrad",
-    "gradientdescent": "SGD",
+    "sgd_dsqrt": "SGD",
     "prescinol": "SI-Cw",
     "prescinol2": "SI-Full",
     "nag": "NAG"
@@ -26,7 +26,7 @@ names_dict = {
 colors_dict = {
     "adam": "black",
     "adagrad": "m",
-    "gradientdescent": "limegreen",
+    "sgd_dsqrt": "limegreen",
     "prescinol": "red",
     "prescinol2": "deepskyblue",
     "nag": "gold"
@@ -282,7 +282,7 @@ def plot_with_std_v2(tree,
                 ax = sns.tsplot(data[:, :, di],
                                 time=steps,
                                 # value=y_axis,
-                                condition=tag,
+                                condition=names_dict[tag],
                                 legend=i == 0,
                                 ax=ax,
                                 color=colors_dict[tag],
@@ -324,33 +324,32 @@ if __name__ == "__main__":
     all_files = glob.glob('{}/**/*events*'.format(args.log_dir), recursive=True)
     tree = Tree(verbose=args.verbose)
 
-    filters = ["adam", "adagrad", "prescinol", "nag", "gradientdescent", "prescinol2"]
+    filters = ["adam", "adagrad", "prescinol", "nag", "sgd_dsqrt", "prescinol2"]
     tree.load(all_files, filters)
 
     # Plots everything separately
     all_keys = list(tree.random_access_data.keys())
     print("Saving graphs to: '{}'".format(args.output_dir))
 
-    # for key in tqdm(all_keys, leave=False):
-    #     dataset, mode, architecture, algo = key
-    #     try:
-    #         plot_with_std(tree,
-    #                       tag_sets=[key],
-    #                       y_axis="cross entropy",
-    #                       title="{}: {}".format(dataset, algo),
-    #                       err_style="unit_traces")
-    #
-    #         save_plot(os.path.join(args.output_dir, dataset, mode, architecture, algo),
-    #                   extension=args.extension)
-    #     except Exception as ex:
-    #         print("Failed for: {}".format(key))
-    #         print("Data shape: {}".format(tree.get(key).shape))
-    #         if args.verbose:
-    #             print(" ============== EXCEPTION ============")
-    #             print(ex)
-    #             traceback.print_exc()
-    #             print(" =====================================")
-    #         exit(0)
+    for key in tqdm(all_keys, leave=False):
+        dataset, mode, architecture, algo = key
+        try:
+            plot_with_std(tree,
+                          tag_sets=[key],
+                          y_axis="cross entropy",
+                          title="{}: {}".format(dataset, algo),
+                          err_style="unit_traces")
+
+            save_plot(os.path.join(args.output_dir, dataset, mode, architecture, algo),
+                      extension=args.extension)
+        except Exception as ex:
+            print("Failed for: {}".format(key))
+            print("Data shape: {}".format(tree.get(key).shape))
+            if args.verbose:
+                print(" ============== EXCEPTION ============")
+                print(ex)
+                traceback.print_exc()
+                print(" =====================================")
 
     joined_keys = {}
     for d, m, a, algo in all_keys:
