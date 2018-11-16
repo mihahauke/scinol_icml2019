@@ -1,25 +1,25 @@
 optimizers:
   prescinol:
   prescinol2:
-#  adam:
-#    - {learning_rate: 1.0 }
-#    - {learning_rate: 0.1 }
-#    - {learning_rate: 0.01 }
-#    - {learning_rate: 0.001 }
-#    - {learning_rate: 0.0001 }
-#  adagrad:
-#    - {learning_rate: 1.0 }
-#    - {learning_rate: 0.1 }
-#    - {learning_rate: 0.01 }
-#    - {learning_rate: 0.001 }
-#    - {learning_rate: 0.0001 }
-#  sgd:
-#    - {learning_rate: 1.0, decay: "sqrt" }
-#    - {learning_rate: 0.1, decay: "sqrt" }
-#    - {learning_rate: 0.01, decay: "sqrt" }
-#    - {learning_rate: 0.001, decay: "sqrt" }
-#    - {learning_rate: 0.0001, decay: "sqrt" }
-#    - {learning_rate: 0.00001, decay: "sqrt" }
+  adam:
+    - {learning_rate: 1.0 }
+    - {learning_rate: 0.1 }
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+  adagrad:
+    - {learning_rate: 1.0 }
+    - {learning_rate: 0.1 }
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+  sgd:
+    - {learning_rate: 1.0, decay: "sqrt" }
+    - {learning_rate: 0.1, decay: "sqrt" }
+    - {learning_rate: 0.01, decay: "sqrt" }
+    - {learning_rate: 0.001, decay: "sqrt" }
+    - {learning_rate: 0.0001, decay: "sqrt" }
+    - {learning_rate: 0.00001, decay: "sqrt" }
   nag:
     - {learning_rate: 1.0 }
     - {learning_rate: 0.1 }
