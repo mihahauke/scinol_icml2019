@@ -1,0 +1,27 @@
+optimizers:
+  - scinol
+  - scinol2
+
+models:
+  - lr0
+
+
+datasets:
+  - Mnist
+  - UCI_Madelon
+  - UCI_Bank
+  - UCI_Census
+  - UCI_Covertype
+  - PennShuttle
+
+#  - PennPoker
+#  - PennSleep
+#  - PennFars
+#  - PennKddcup
+#  - PennConnect4
+
+
+train_batchsize: 1
+epochs: 30
+times: 1
+train_histograms: False
