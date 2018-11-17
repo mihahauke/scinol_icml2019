@@ -210,14 +210,18 @@ if __name__ == '__main__':
             datasets = config["datasets"]
 
         if args.show_datasets:
-            print("Name | size | input shape | classes".format())
+            print("Name | size | input shape | classes | scale ".format())
         for dataset_name in datasets:
             dataset = eval(dataset_name)(**config)
             if args.show_datasets:
-                print("{}: \t{} \t{} \t{} ".format(dataset_name,
+                print("{}: \t{} \t{} \t{} \t{:0.2f}".format(dataset_name,
                                                    dataset.size,
                                                    dataset.input_shape,
-                                                   max(dataset.outputs_num,2)))
+                                                   max(dataset.outputs_num,2),
+                                                   dataset.scale
+                                                   )
+
+                      )
                 continue
             for model_class in config["models"]:
                 print("Running optimizers for dataset: '{}', model: '{}'".format(dataset.get_name(), model_class))
