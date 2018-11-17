@@ -95,12 +95,19 @@ class _Dataset():
         return self._outputs_num
 
     @property
-    def num_records(self):
+    def size(self):
         return len(self.train[0]) + len(self.test[0])
 
     @property
     def input_shape(self):
         return self._input_shape
+
+    @property
+    def scale(self):
+        flat_data = self.train[0].reshape(len(self.train[0]), -1)
+        msqrt = ((flat_data ** 2).mean(0)) ** 0.5
+        msqrt = msqrt[msqrt > 0]
+        return msqrt.max() / msqrt.min()
 
     def train_batches(self, batchsize=None):
         if batchsize is None:

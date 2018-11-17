@@ -23,13 +23,33 @@ names_dict = {
     "prescinol2": "SI-Full",
     "nag": "NAG"
 }
+yellow = (0.86, 0.7612000000000001, 0.33999999999999997)
+reddish = (0.86, 0.3712, 0.33999999999999997)
+green= (0.5688000000000001, 0.86, 0.33999999999999997)
+blue = (0.33999999999999997, 0.43879999999999986, 0.86)
+violet =(0.6311999999999998, 0.33999999999999997, 0.86)
+grey = (0.7019607843137254, 0.7019607843137254, 0.7019607843137254)
+
+
 colors_dict = {
-    "adam": "black",
-    "adagrad": "m",
-    "sgd_dsqrt": "limegreen",
-    "prescinol": "red",
-    "prescinol2": "deepskyblue",
-    "nag": "gold"
+    "adagrad": reddish,
+    "adam": blue,
+
+    "nag": violet,
+    "prescinol": grey,
+    "prescinol2": yellow,
+
+    "sgd_dsqrt": green,
+}
+
+titles_dict = {
+    "mnist": "Mnist",
+    "UCI_Bank": "UCI Bank",
+    "UCI_Covertype": "UCI Covertype",
+    "UCI_Census": "UCI Census",
+    "UCI_Madelon": "UCI Madelon",
+    "Penn_shuttle": "Shuttle"
+
 }
 
 
@@ -199,21 +219,29 @@ def plot_with_std(tree,
     if len(data) > 1:
         data = [d[0:min_runs_num, 0:min_steps_num] for d in data]
         data = np.stack(data, axis=2)
-        tag_sets = [t[-1] for t in tag_sets]
+        legend_names = [t[-1] for t in tag_sets]
+        new_legend_names = []
+        for name in legend_names:
+            for group_name in sorted(names_dict, reverse=True):
+                if name.startswith(group_name):
+                    new_legend_names.append(names_dict[group_name])
+                    break
+        legend_names = new_legend_names
     else:
-        tag_sets = None
+        legend_names = None
         data = data[0]
     default_kwargs = {
         "err_style": "ci_band",
         "ci": "sd",
     }
     default_kwargs.update(kwargs)
+
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning)
         sns.tsplot(data,
                    time=steps,
                    value=y_axis,
-                   condition=tag_sets,
+                   condition=legend_names,
                    legend=len(data.shape) > 2,
                    **default_kwargs
                    )
@@ -290,7 +318,6 @@ def plot_with_std_v2(tree,
                                 )
     plt.title(title)
     plt.xlabel(x_axis_label)
-    plt.locator_params(nbins=8)
 
 
 def save_plot(path, extension="pdf"):
@@ -300,7 +327,7 @@ def save_plot(path, extension="pdf"):
         path += extension
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
-
+    plt.locator_params(nbins=6)
     plt.savefig(path)
     plt.clf()
 
@@ -340,7 +367,7 @@ if __name__ == "__main__":
                           title="{}: {}".format(dataset, algo),
                           err_style="unit_traces")
 
-            save_plot(os.path.join(args.output_dir, dataset, mode, architecture, algo),
+            save_plot(os.path.join(args.output_dir, dataset, algo),
                       extension=args.extension)
         except Exception as ex:
             print("Failed for: {}".format(key))
@@ -359,22 +386,72 @@ if __name__ == "__main__":
 
     # Plot version 1
 
-    # for [d, m, a], tag_set in tqdm(joined_keys.items(), leave=False):
-    #     tag_set = sorted(tag_set, key=lambda x: x[3])
-    #     plot_with_std(tree,
-    #                   tag_sets=tag_set,
-    #                   y_axis="cross entropy",
-    #                   title="{} {} {}".format(d, m, a))
-    #     save_plot(os.path.join(args.output_dir, d) + "_v1",
-    #               extension=args.extension)
+    best_runs = {
+        "mnist":
+            {"adagrad_l0.1",
+             "adam_l0.0001",
+             "nag_l1.0",
+             "prescinol2",
+             "prescinol",
+             "sgd_dsqrt_l1.0"},
+        "UCI_Covertype":
+            {"adagrad_l0.01",
+             "adam_l0.0001",
+             "nag_l1.0",
+             "prescinol2",
+             "prescinol",
+             "sgd_dsqrt_l1e-05"},
+        "UCI_Census":
+            {"adagrad_l0.01",
+             "adam_l0.0001",
+             "nag_l0.01",
+             "prescinol2",
+             "prescinol",
+             "sgd_dsqrt_l1e-05"},
+
+        "UCI_Madelon":
+            {"adagrad_l0.0001",
+             "adam_l0.0001",
+             "nag_l0.1",
+             "prescinol2",
+             "prescinol",
+             "sgd_dsqrt_l1e-05"},
+
+        "UCI_Bank":
+            {"adagrad_l0.01",
+             "adam_l0.0001",
+             "nag_l1.0",
+             "prescinol2",
+             "prescinol",
+             "sgd_dsqrt_l1e-05"},
+        "Penn_shuttle":
+            {"adagrad_l0.01",
+             "adam_l0.0001",
+             "nag_l0.1",
+             "prescinol2",
+             "prescinol",
+             "sgd_dsqrt_l0.0001"}
+    }
+
+    for [d, m, a], tag_set in tqdm(joined_keys.items(), leave=False):
+        new_tag_set = []
+        for tags in tag_set:
+            if tags[-1] in best_runs[d]:
+                new_tag_set.append(tags)
+        tag_set = sorted(new_tag_set, key=lambda x: x[3])
+        plot_with_std(tree,
+                      tag_sets=tag_set,
+                      y_axis="cross entropy",
+                      title=titles_dict[d] +" (best)")
+        save_plot(os.path.join(args.output_dir, "all_v1", d) + "_v1",
+                  extension=args.extension)
 
     # Plot version 2
-
     for [d, m, a], tag_set in tqdm(joined_keys.items(), leave=False):
         tag_set = sorted(tag_set, key=lambda x: x[3])
         plot_with_std_v2(tree,
                          tag_sets=tag_set,
                          y_axis="cross entropy",
-                         title="{} {} {}".format(d, m, a))
-        save_plot(os.path.join(args.output_dir, d) + "_v2",
+                         title=titles_dict[d])
+        save_plot(os.path.join(args.output_dir, "all_v2", d) + "_v2",
                   extension=args.extension)
