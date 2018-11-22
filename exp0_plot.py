@@ -25,31 +25,41 @@ names_dict = {
 }
 yellow = (0.86, 0.7612000000000001, 0.33999999999999997)
 reddish = (0.86, 0.3712, 0.33999999999999997)
-green= (0.5688000000000001, 0.86, 0.33999999999999997)
-blue = (0.33999999999999997, 0.43879999999999986, 0.86)
-violet =(0.6311999999999998, 0.33999999999999997, 0.86)
+red_orange = "#e74c3c"
+orange = (1.0, 0.4980392156862745, 0.054901960784313725)
+
+green = (0.5688000000000001, 0.86, 0.33999999999999997)
+blue = "#3498db"
+violet = (0.6311999999999998, 0.33999999999999997, 0.86)
 grey = (0.7019607843137254, 0.7019607843137254, 0.7019607843137254)
 
-
 colors_dict = {
-    "adagrad": reddish,
-    "adam": blue,
+    "adagrad": orange,
+    "adam": reddish,
 
     "nag": violet,
-    "prescinol": grey,
-    "prescinol2": yellow,
+    "prescinol": green,
+    "prescinol2": blue,
 
-    "sgd_dsqrt": green,
+    "sgd_dsqrt": grey,
 }
 
 titles_dict = {
-    "mnist": "Mnist",
+    "mnist": "MNIST",
     "UCI_Bank": "UCI Bank",
     "UCI_Covertype": "UCI Covertype",
     "UCI_Census": "UCI Census",
     "UCI_Madelon": "UCI Madelon",
     "Penn_shuttle": "Shuttle"
 
+}
+markers_dict = {
+    "adagrad": "p",
+    "adam": "P",
+    "nag": "s",
+    "prescinol": "^",
+    "prescinol2": "v",
+    "sgd_dsqrt": "d",
 }
 
 
@@ -117,7 +127,8 @@ class Tree(object):
             except:
                 print("Could not read '{}'".format(filename))
 
-            data = [steps, entropy]
+            data = [steps[1:], entropy[1:]]
+
             self._add_leaf(tokens_list, data)
 
         self._convert_lists_to_arrays()
@@ -219,17 +230,19 @@ def plot_with_std(tree,
     if len(data) > 1:
         data = [d[0:min_runs_num, 0:min_steps_num] for d in data]
         data = np.stack(data, axis=2)
-        legend_names = [t[-1] for t in tag_sets]
-        new_legend_names = []
-        for name in legend_names:
-            for group_name in sorted(names_dict, reverse=True):
-                if name.startswith(group_name):
-                    new_legend_names.append(names_dict[group_name])
-                    break
-        legend_names = new_legend_names
     else:
-        legend_names = None
         data = data[0]
+        data = data.reshape(list(data.shape) + [1])
+
+    short_names = [t[-1] for t in tag_sets]
+    new_short_names = []
+    for name in short_names:
+        for group_name in sorted(names_dict, reverse=True):
+            if name.startswith(group_name):
+                new_short_names.append(group_name)
+                break
+    short_names = new_short_names
+
     default_kwargs = {
         "err_style": "ci_band",
         "ci": "sd",
@@ -238,13 +251,21 @@ def plot_with_std(tree,
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning)
-        sns.tsplot(data,
-                   time=steps,
-                   value=y_axis,
-                   condition=legend_names,
-                   legend=len(data.shape) > 2,
-                   **default_kwargs
-                   )
+        ax = None
+        for di in range(data.shape[2]):
+            sn = short_names[di]
+            sns.tsplot(data[:, :, di],
+                       time=steps,
+                       value=y_axis,
+                       condition=names_dict[sn],
+                       legend=len(data.shape) > 2,
+                       linewidth=1,
+                       marker=markers_dict[sn],
+                       color=colors_dict[sn],
+                       markersize=4,
+                       ax=ax,
+                       **default_kwargs
+                       )
     plt.title(title)
     plt.xlabel(x_axis_label)
 
@@ -365,7 +386,8 @@ if __name__ == "__main__":
                           tag_sets=[key],
                           y_axis="cross entropy",
                           title="{}: {}".format(dataset, algo),
-                          err_style="unit_traces")
+                          err_style="unit_traces",
+                          )
 
             save_plot(os.path.join(args.output_dir, dataset, algo),
                       extension=args.extension)
@@ -442,16 +464,17 @@ if __name__ == "__main__":
         plot_with_std(tree,
                       tag_sets=tag_set,
                       y_axis="cross entropy",
-                      title=titles_dict[d] +" (best)")
-        save_plot(os.path.join(args.output_dir, "all_v1", d) + "_v1",
+                      title=titles_dict[d],
+                      )
+        save_plot(os.path.join(args.output_dir, d),
                   extension=args.extension)
 
-    # Plot version 2
-    for [d, m, a], tag_set in tqdm(joined_keys.items(), leave=False):
-        tag_set = sorted(tag_set, key=lambda x: x[3])
-        plot_with_std_v2(tree,
-                         tag_sets=tag_set,
-                         y_axis="cross entropy",
-                         title=titles_dict[d])
-        save_plot(os.path.join(args.output_dir, "all_v2", d) + "_v2",
-                  extension=args.extension)
+        # # Plot version 2
+        # for [d, m, a], tag_set in tqdm(joined_keys.items(), leave=False):
+        #     tag_set = sorted(tag_set, key=lambda x: x[3])
+        #     plot_with_std_v2(tree,
+        #                      tag_sets=tag_set,
+        #                      y_axis="cross entropy",
+        #                      title=titles_dict[d])
+        #     save_plot(os.path.join(args.output_dir, "all_v2", d) + "_v2",
+        #               extension=args.extension)

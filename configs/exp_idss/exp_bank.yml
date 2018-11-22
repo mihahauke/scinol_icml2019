@@ -1,0 +1,18 @@
+optimizers:
+  scinol:
+  scinol2:
+  cocob:
+models:
+  - lr0
+
+
+datasets:
+  - UCI_Bank
+
+
+train_batchsize: 1
+epochs: 10
+times: 1
+train_histograms: False
+train_logs: False
+no_tqdm: True

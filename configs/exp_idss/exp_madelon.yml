@@ -1,0 +1,19 @@
+optimizers:
+  scinol:
+  scinol2:
+  cocob:
+
+models:
+  - lr0
+
+datasets:
+  - UCI_Madelon
+
+
+
+train_batchsize: 1
+epochs: 60
+times: 1
+train_histograms: False
+train_logs: False
+no_tqdm: True

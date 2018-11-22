@@ -1,0 +1,20 @@
+optimizers:
+  scinol:
+  scinol2:
+  cocob:
+
+models:
+  - lr0
+
+
+datasets:
+  - PennShuttle
+  
+
+
+train_batchsize: 1
+epochs: 20
+times: 1
+train_histograms: False
+train_logs: False
+no_tqdm: True
