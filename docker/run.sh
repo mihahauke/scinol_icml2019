@@ -2,7 +2,7 @@
 
 ACTUAL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/..
 cd ${ACTUAL_DIR}
-NAME="optim_`hostname`"
+NAME="optim_$RANDOM"
 IMAGE_TAG="optim"
 docker run \
         --user=`id -u`:`id -g`\
