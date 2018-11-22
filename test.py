@@ -124,6 +124,7 @@ def test(
 
     else:
         from tqdm import trange
+
     for _ in trange(epochs, desc="{}_{}".format(optim_name, oargs).strip("_")):
         for bx, by in dataset.train_batches():
             batches_processed += 1
@@ -215,11 +216,11 @@ if __name__ == '__main__':
             dataset = eval(dataset_name)(**config)
             if args.show_datasets:
                 print("{}: \t{} \t{} \t{} \t{:0.2f}".format(dataset_name,
-                                                   dataset.size,
-                                                   dataset.input_shape,
-                                                   max(dataset.outputs_num,2),
-                                                   dataset.scale
-                                                   )
+                                                            dataset.size,
+                                                            dataset.input_shape,
+                                                            max(dataset.outputs_num, 2),
+                                                            dataset.scale
+                                                            )
 
                       )
                 continue
@@ -237,10 +238,10 @@ if __name__ == '__main__':
                                 tag=args.tag,
                                 **config)
                         except Exception as ex:
-                            print("ERROR: {} crashed".format(optimizer_class))
-                            print("=============== EXCETPION: ===============")
+                            print("=============== EXCETPION ===============")
+                            print("=============== {} ===============".format(optimizer_class))
                             print(ex)
-                            traceback.print_exc()
+                            traceback.print_exc(file=sys.stdout)
                             print("==========================================")
     except KeyboardInterrupt:
         print()
