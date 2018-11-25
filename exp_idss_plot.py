@@ -47,12 +47,11 @@ colors_dict = {
 
 titles_dict = {
     "mnist": "MNIST",
-    "UCI_Bank": "UCI Bank",
+    "UCI_Bank": np.inf,
     "UCI_Covertype": "UCI Covertype",
     "UCI_Census": "UCI Census",
     "UCI_Madelon": "UCI Madelon",
     "Penn_shuttle": "Shuttle"
-
 }
 markers_dict = {
     "adagrad": "p",
@@ -130,6 +129,8 @@ class Tree(object):
                 print("Could not read '{}'".format(filename))
 
             data = [steps[1:], entropy[1:]]
+            if dataset == "UCI_Madelon":
+                data = [steps[0:30], entropy[0:30]]
 
             self._add_leaf(tokens_list, data)
 
