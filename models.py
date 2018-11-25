@@ -9,7 +9,12 @@ import tensorflow as tf
 #         self._name = name
 
 
-def nn(inputs, outputs_num, dropout_switch, layers, dropout=0.9, activation_fn=tf.nn.relu):
+def nn(inputs,
+       outputs_num,
+       dropout_switch,
+       layers,
+       dropout=0.9,
+       activation_fn=tf.nn.relu):
     inputs = tf.layers.flatten(inputs)
     keep_prob = 1 - (1 - dropout) * dropout_switch
     for num_units in layers:
@@ -75,32 +80,6 @@ def lr0(inputs, outputs_num, *args, **kwargs):
                            activation_fn=None,
                            biases_initializer=tf.initializers.zeros,
                            weights_initializer=tf.initializers.zeros)
-
-
-def nn_500(inputs, output_num, dropout_switch):
-    return nn(inputs, output_num, dropout_switch, layers=[500])
-
-
-def nn_1000(inputs, output_num, dropout_switch):
-    return nn(inputs, output_num, dropout_switch, layers=[1000])
-
-
-def nn_1000_500(inputs, output_num, dropout_switch):
-    return nn(inputs, output_num, dropout_switch, layers=[1000, 500])
-
-
-def nn_1000_1000(inputs, output_num, dropout_switch):
-    return nn(inputs, output_num, dropout_switch, layers=[1000, 1000])
-
-
-def nn_1000_500_elu(inputs, output_num, dropout_switch):
-    return nn(inputs, output_num, dropout_switch, layers=[1000, 500],
-              activation_fn=tf.nn.elu)
-
-
-def nn_500_500_elu(inputs, output_num, dropout_switch):
-    return nn(inputs, output_num, dropout_switch, layers=[500, 500],
-              activation_fn=tf.nn.elu)
 
 
 def cocob_cnn(inputs, outputs_num, dropout_switch):

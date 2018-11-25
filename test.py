@@ -4,7 +4,7 @@ import traceback
 import argparse
 import ruamel.yaml as yaml
 from time import strftime
-
+import tabulate
 from collections import defaultdict
 from models import *
 from datasets import *
@@ -13,17 +13,37 @@ from short_names import *
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 DEFAULT_TIMES = 1
 DEFAULT_TB_LOGDIR = "tb_logs"
-
+DEFAULT_LOGDIR = None
 FLUSH_SECS = 2
 TESTBATCH_SIZE = 100000
 DEFAULT_EPOCHS = 30
 DEFAULT_ONE_HOT = True
 
 
+def _parse_list_dict(list_or_dict):
+    if isinstance(list_or_dict, list):
+        return [(k, {}) for k in list_or_dict]
+    elif isinstance(list_or_dict, dict):
+        return_list = []
+        for key_class, instances in list_or_dict.items():
+            if not isinstance(instances, list):
+                return_list.append((key_class, {}))
+            else:
+                for args in instances:
+                    if args is None:
+                        args = {}
+                    return_list.append((key_class, args))
+        return return_list
+    else:
+        raise ValueError("no list/dict")
+
+
 def test(
+        tblogdir,
         logdir,
         dataset,
         model,
+        model_args,
         optimizer_class,
         optimizer_args,
         epochs=DEFAULT_EPOCHS,
@@ -32,20 +52,27 @@ def test(
         tag=None,
         train_logs=True,
         no_tqdm=False,
+        verbose=False,
         *args,
         **kwargs):
     # TODO add tag support
     if tag is not None:
         raise NotImplementedError()
-
-    tf.gfile.MakeDirs(logdir)
+    if logdir is not None:
+        raise NotImplementedError()
+        # tf.gfile.MakeDirs(logdir)
+    tf.gfile.MakeDirs(tblogdir)
     tf.reset_default_graph()
     dropout_switch = tf.placeholder_with_default(1.0,
                                                  None,
                                                  name='dropout_switch')
 
     x = tf.placeholder(tf.float32, [None] + dataset.input_shape, name='x-input')
-    y = eval(model)(x, dataset.outputs_num, dropout_switch=dropout_switch)
+    y = eval(model)(
+        x,
+        dataset.outputs_num,
+        dropout_switch=dropout_switch,
+        **model_args)
 
     if dataset.outputs_num == 1:
         y_target = tf.placeholder(tf.float32, [None], name='y-input')
@@ -77,28 +104,30 @@ def test(
 
     grads_and_vars = optimizer.compute_gradients(loss)
     train_step = optimizer.apply_gradients(grads_and_vars)
+    # TODO add model args to writer dirs
 
+    # Summaries
     summaries_prefix = dataset.get_name()
-    hist_summaries = []
+    grad_hist_summaries = []
+    var_hist_summaries = []
     for grad, var in grads_and_vars:
         g_summary = tf.summary.histogram('{}/{}/gradients/{}'.format(summaries_prefix, model, var.name), grad)
         v_summary = tf.summary.histogram('{}/{}/{}'.format(summaries_prefix, model, var.name), var)
-        hist_summaries.append(g_summary)
-        hist_summaries.append(v_summary)
+        grad_hist_summaries.append(g_summary)
+        var_hist_summaries.append(v_summary)
     acc_summary = tf.summary.scalar('{}/accuracy'.format(summaries_prefix), accuracy)
     ce_summary = tf.summary.scalar('{}/cross_entropy'.format(summaries_prefix), mean_cross_entropy)
 
-    all_summaries = tf.summary.merge_all()
-    # all_summaries=  tf.summary.merge([acc_summary, ce_summary])
     if train_histograms:
-        train_summaries = all_summaries
+        train_summaries = tf.summary.merge_all()
     else:
         train_summaries = tf.summary.merge([acc_summary, ce_summary])
+    test_summaries = tf.summary.merge([acc_summary, ce_summary] + var_hist_summaries)
 
     time = strftime("%m.%d_%H-%M-%S")
     optim_name = optimizer.get_name().lower()
     oargs = "_".join(k[0] + str(v) for k, v in sorted(optimizer_args.items()))
-    prefix = "{}/{}/{}/{}/{}_{}".format(logdir, dataset.get_name(), model, time, optim_name, oargs)
+    prefix = "{}/{}/{}/{}/{}_{}".format(tblogdir, dataset.get_name(), model, time, optim_name, oargs)
     prefix = prefix.strip("_")
     if train_logs:
         train_writer = tf.summary.FileWriter(prefix + '/train', flush_secs=FLUSH_SECS)
@@ -111,7 +140,7 @@ def test(
     batches_processed = 0
 
     test_x, test_y = dataset.get_test_data()
-    test_summary = sess.run(all_summaries,
+    test_summary = sess.run(test_summaries,
                             feed_dict={x: test_x,
                                        y_target: test_y,
                                        dropout_switch: 0})
@@ -160,12 +189,24 @@ if __name__ == '__main__':
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument(
+            "--tblogdir",
+            "-tbl",
+            type=str,
+            default=DEFAULT_TB_LOGDIR,
+            help="TB Summaries log directory")
+        parser.add_argument(
             "--logdir",
             "-l",
             type=str,
-            default=DEFAULT_TB_LOGDIR,
-            help="Summaries log directory")
-
+            default=DEFAULT_LOGDIR,
+            help="Ordinary logs directory (NOT IMPLEMENTED")
+        parser.add_argument(
+            "--verbose",
+            "-v",
+            action="store_true",
+            default=False,
+            help="Well... guess."
+        )
         parser.add_argument(
             "--config",
             "-c",
@@ -178,64 +219,82 @@ if __name__ == '__main__':
             "--tag",
             metavar="tag",
             type=str,
-            help="runtag for tensorboard",
+            help="runtag for tensorboard (not implemented)",
             default=None)
         parser.add_argument(
             "--show-datasets",
             "-s",
             action="store_true",
+            help="shows some descriptions of loaded datasets and exits",
             default=False,
         )
 
         args = parser.parse_args()
+        if args.logdir is not None:
+            raise NotImplementedError("logdir ...")
+
+        if args.tag is not None:
+            raise NotImplementedError("tag ...")
 
         config = defaultdict(lambda: None, yaml.safe_load(open(args.config)))
-        optimizers = []
+        optimizers = _parse_list_dict(config["optimizers"])
+        models = _parse_list_dict(config["models"])
 
-        for optim_class, instances in config["optimizers"].items():
-            if not isinstance(instances, list):
-                optimizers.append((optim_class, {}))
-            else:
-                for optim_args in instances:
-                    if optim_args is None:
-                        optim_args = {}
-                    optimizers.append((optim_class, optim_args))
+        if args.verbose:
+            print("Optimizers:")
+            for optim, oargs in optimizers:
+                oargs = ", ".join(["{}:{}".format(k, v) for k, v in oargs.items()])
+                print("\t{}  {}".format(optim, oargs))
 
-        print("Optimizers:", len(optimizers))
-        print("Models:", len(config["models"]))
+            print("Models:")
+            for model, margs in models:
+                margs = ", ".join(["{}:{}".format(k, v) for k, v in margs.items()])
+                print("\t{}  {}".format(model, margs))
+
+        print("# Optimizers:", len(optimizers))
+        print("# Models:", len(config["models"]))
+
         print("Tests in total:", len(optimizers) * len(config["models"]))
 
         if "datasets" not in config:
-            datasets = [config["dataset"]]
+            if "dataset" in config:
+                datasets = [config["dataset"]]
+            else:
+                raise ValueError("No dataset(s) specified.")
         else:
             datasets = config["datasets"]
 
         if args.show_datasets:
-            print("Name | size | input shape | classes | scale ".format())
+            header = "Name", "size", "features", "classes", "scale ", "spread"
+            lines = []
+            for dataset_name in datasets:
+                dataset = eval(dataset_name)(**config)
+                line = [dataset_name,
+                        dataset.size,
+                        np.prod(dataset.input_shape),
+                        max(dataset.outputs_num, 2),
+                        dataset.feature_scale,
+                        dataset.feature_spread
+                        ]
+                lines.append(line)
+            print(tabulate.tabulate(lines, header, floatfmt=".2E"))
+            exit(0)
         for dataset_name in datasets:
             dataset = eval(dataset_name)(**config)
-            if args.show_datasets:
-                print("{}: \t{} \t{} \t{} \t{:0.2f}".format(dataset_name,
-                                                            dataset.size,
-                                                            dataset.input_shape,
-                                                            max(dataset.outputs_num, 2),
-                                                            dataset.scale
-                                                            )
-
-                      )
-                continue
-            for model_class in config["models"]:
+            for model_class, model_args in models:
                 print("Running optimizers for dataset: '{}', model: '{}'".format(dataset.get_name(), model_class))
                 for optimizer_class, optimizer_args in sorted(optimizers, key=lambda x: x[0]):
                     for _ in range(config["times"]):
                         try:
                             test(
-                                args.logdir,
+                                args.tblogdir,
                                 dataset,
                                 model_class,
+                                model_args,
                                 optimizer_class,
                                 optimizer_args,
                                 tag=args.tag,
+                                verbose=args.verbose,
                                 **config)
                         except Exception as ex:
                             print("=============== EXCETPION ===============")

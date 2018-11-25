@@ -103,11 +103,20 @@ class _Dataset():
         return self._input_shape
 
     @property
-    def scale(self):
-        flat_data = self.train[0].reshape(len(self.train[0]), -1)
-        msqrt = ((flat_data ** 2).mean(0)) ** 0.5
-        msqrt = msqrt[msqrt > 0]
-        return msqrt.max() / msqrt.min()
+    def feature_scale(self):
+        all_data = np.concatenate([self.train[0], self.test[0]], axis=0)
+        flat_data = all_data.reshape(len(all_data), -1)
+        # l2norm = ((flat_data ** 2).sum(0)) ** 0.5
+        l2norm = np.linalg.norm(flat_data,axis=0)
+        l2norm = l2norm[l2norm > 0]
+        return l2norm.max() / l2norm.min()
+
+    @property
+    def feature_spread(self):
+        all_data = np.concatenate([self.train[0], self.test[0]], axis=0)
+        flat_data = all_data.reshape(len(all_data), -1)
+        fmax = abs(flat_data).max(0)
+        return fmax.max() / fmax[fmax != 0].min()
 
     def train_batches(self, batchsize=None):
         if batchsize is None:
