@@ -11,6 +11,7 @@ import numpy as np
 import os
 import itertools as it
 import traceback
+import pandas as pd
 
 plt.style.use("ggplot")
 from tqdm import tqdm
@@ -19,10 +20,18 @@ names_dict = {
     "adam": "Adam",
     "adagrad": "AdaGrad",
     "sgd_dsqrt": "SGD",
-    "scinol": "ScInOl",
-    "scinol2": "ScInOl2",
+    "scinol": "ScInOL 1",
+    "scinol2": "ScInOL 2",
     "nag": "NAG",
-    "cocob": "CoCob"
+    "cocob": "CoCob",
+    "Adam": "Adam",
+    "ScInOL_1": "ScInOL 1",
+    "ScInOL_2": "ScInOL 2",
+    "Orabona": "Orabona",
+    'NAG': "NAG",
+    'SGD': "SGD",
+    'AdaGrad': "AdaGrad",
+
 }
 yellow = (0.86, 0.7612000000000001, 0.33999999999999997)
 reddish = (0.86, 0.3712, 0.33999999999999997)
@@ -43,15 +52,31 @@ colors_dict = {
     "scinol2": blue,
     "cocob": red_orange,
     "sgd_dsqrt": grey,
+    "Adam": black,
+    "ScInOL_1": green,
+    "ScInOL_2": blue,
+    "Orabona": red_orange,
+    'NAG': violet,
+    'SGD': grey,
+    'AdaGrad': orange,
+
 }
 
 titles_dict = {
     "mnist": "MNIST",
-    "UCI_Bank": np.inf,
+    "UCI_Bank": "UCI Bank",
     "UCI_Covertype": "UCI Covertype",
     "UCI_Census": "UCI Census",
     "UCI_Madelon": "UCI Madelon",
     "Penn_shuttle": "Shuttle"
+}
+classes = {
+    "mnist": 10,
+    "UCI_Bank": 2,
+    "UCI_Covertype": 7,
+    "UCI_Census": 2,
+    "UCI_Madelon": 2,
+    "Penn_shuttle": 7
 }
 markers_dict = {
     "adagrad": "p",
@@ -60,7 +85,15 @@ markers_dict = {
     "scinol": "^",
     "scinol2": "v",
     "sgd_dsqrt": "d",
-    "cocob": "X"
+    "cocob": "X",
+    "Adam": "P",
+    "ScInOL_1": "^",
+    "ScInOL_2": "v",
+    "Orabona": "X",
+    'NAG': "s",
+    'SGD': "d",
+    'AdaGrad': "p",
+
 }
 
 
@@ -79,7 +112,8 @@ class Tree(object):
         self.algorithms = set()
         self.verbose = verbose
 
-    def load(self, files, filters=None, excludes=None):
+    def load(self, logdir, filters=None, excludes=None):
+        files = glob.glob('{}/**/*events*'.format(logdir), recursive=True)
         if self.verbose:
             print("Loading files into tree structure")
             print("Found {} files...".format(len(files)))
@@ -203,6 +237,7 @@ def plot_with_std(tree,
                   y_axis="TODO",
                   verbose=False,
                   x_axis_label="# iterations",
+                  line=None,
                   **kwargs):
     data = []
     steps = None
@@ -257,17 +292,21 @@ def plot_with_std(tree,
         ax = None
         for di in range(data.shape[2]):
             sn = short_names[di]
-            sns.tsplot(data[:, :, di],
-                       time=steps,
-                       value=y_axis,
-                       condition=names_dict[sn],
-                       legend=len(data.shape) > 2,
-                       linewidth=1,
-                       marker=markers_dict[sn],
-                       color=colors_dict[sn],
-                       markersize=4,
-                       ax=ax,
-                       **default_kwargs
+            ax = sns.tsplot(data[:, :, di],
+                            time=steps,
+                            value=y_axis,
+                            condition=names_dict[sn],
+                            legend=len(data.shape) > 2,
+                            linewidth=1,
+                            marker=markers_dict[sn],
+                            color=colors_dict[sn],
+                            markersize=4,
+                            ax=ax,
+                            **default_kwargs
+                            )
+        if line is not None:
+            sns.tsplot([line] * len(steps),
+                       color=black, time=steps, linewidth=1, linestyle='--', ax=ax,
                        )
     plt.title(title)
     plt.xlabel(x_axis_label)
@@ -344,14 +383,15 @@ def plot_with_std_v2(tree,
     plt.xlabel(x_axis_label)
 
 
-def save_plot(path, extension="pdf"):
+def save_plot(path, extension="pdf", logscale=False):
     if not extension.startswith("."):
         extension = "." + extension
     if not path.endswith(extension):
         path += extension
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    plt.locator_params(nbins=6)
+    if not logscale:
+        plt.locator_params(nbins=6)
     plt.savefig(path)
     plt.clf()
 
@@ -370,47 +410,108 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", "-v",
                         action="store_true",
                         default=False)
+    parser.add_argument("--show", "-s", default=False, action="store_true")
+
+    parser.add_argument("--log-scale", "-l", default=False, action="store_true")
     args = parser.parse_args()
 
-    all_files = glob.glob('{}/**/*events*'.format(args.log_dir), recursive=True)
+    # artificial exp :
+    df = pd.read_csv("artificial_new.csv")
+    header = df.columns.values[1:48]
+    data = df.values[:, 1:48]
+    t = df.values[:, 0]
+    t = np.append(t, [0])
+    START_ENTROPY = np.log(2)
+    BEST_ENTROPY = 0.26
+    runs = defaultdict(list)
+    for h, y in zip(header, data.T):
+        name = h.split(" ")[0]
+        y = np.append(y, [START_ENTROPY])
+        runs[name].append(y)
+
+
+    def plot():
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            warnings.filterwarnings("ignore", category=FutureWarning)
+            ax = None
+            for name in runs:
+                for i, run in enumerate(runs[name]):
+                    ax = sns.tsplot(run,
+                                    condition=names_dict[name],
+                                    color=colors_dict[name],
+                                    time=t,
+                                    markersize=4,
+                                    linewidth=1 / len(runs[name]),
+                                    legend=(i == 0),
+                                    value="cross entropy",
+                                    ax=ax,
+                                    )
+            ax = sns.tsplot([BEST_ENTROPY] * len(t),
+                            color=black, time=t, linewidth=1, linestyle='--', ax=ax,
+                            )
+            sns.tsplot([START_ENTROPY] * len(t),
+                       color=black, time=t, linewidth=1, linestyle='--', ax=ax,
+                       )
+            plt.xlabel("# iterations")
+            plt.xlabel("# iterations")
+
+
+    plot()
+    plt.yscale("log")
+    plt.title("Artificial data")
+    path = os.path.join(args.output_dir, "artificial")
+    save_plot(path, extension=args.extension, logscale=True)
+
+    plot()
+    plt.title("Artificial data (zoom)")
+    plt.ylim(BEST_ENTROPY, START_ENTROPY)
+    path = os.path.join(args.output_dir, "artificial_zoom")
+    save_plot(path, extension=args.extension)
+
     tree = Tree(verbose=args.verbose)
 
     filters = ["scinol", "scinol2", "cocob", "adam", "adagrad", "nag", "sgd_dsqrt"]
-    tree.load(all_files, filters)
+    excludes = []
+    tree.load(args.log_dir, filters, excludes)
+
+    all_keys = list(tree.random_access_data.keys())
 
     # Plots everything separately
-    all_keys = list(tree.random_access_data.keys())
     print("Saving graphs to: '{}'".format(args.output_dir))
+    if not args.show:
+        for key in tqdm(all_keys, leave=False):
+            dataset, mode, architecture, algo = key
+            try:
+                plot_with_std(tree,
+                              tag_sets=[key],
+                              y_axis="cross entropy",
+                              title="{}: {}".format(dataset, algo),
+                              err_style="unit_traces",
+                              line=np.log(classes[dataset])
+                              )
+                path = os.path.join(args.output_dir, dataset, algo)
+                if args.log_scale:
+                    plt.yscale("log")
+                    path += "_log"
+                save_plot(path, extension=args.extension)
+            except Exception as ex:
+                print("Failed for: {}".format(key))
+                print("Data shape: {}".format(tree.get(key).shape))
+                if args.verbose:
+                    print(" ============== EXCEPTION ============")
+                    print(ex)
+                    traceback.print_exc()
+                    print(" =====================================")
+                    print()
 
-    for key in tqdm(all_keys, leave=False):
-        dataset, mode, architecture, algo = key
-        try:
-            plot_with_std(tree,
-                          tag_sets=[key],
-                          y_axis="cross entropy",
-                          title="{}: {}".format(dataset, algo),
-                          err_style="unit_traces",
-                          )
-
-            save_plot(os.path.join(args.output_dir, dataset, algo),
-                      extension=args.extension)
-        except Exception as ex:
-            print("Failed for: {}".format(key))
-            print("Data shape: {}".format(tree.get(key).shape))
-            if args.verbose:
-                print(" ============== EXCEPTION ============")
-                print(ex)
-                traceback.print_exc()
-                print(" =====================================")
-                print()
+    # Plot version 1
 
     joined_keys = {}
     for d, m, a, algo in all_keys:
         if not (d, m, a) in joined_keys:
             joined_keys[(d, m, a)] = []
         joined_keys[(d, m, a)].append([d, m, a, algo])
-
-    # Plot version 1
 
     best_runs = {
         "mnist":
@@ -461,9 +562,17 @@ if __name__ == "__main__":
                       tag_sets=tag_set,
                       y_axis="cross entropy",
                       title=titles_dict[d],
+                      line=np.log(classes[d])
                       )
-        save_plot(os.path.join(args.output_dir, d),
-                  extension=args.extension)
+        path = os.path.join(args.output_dir, d)
+        if args.log_scale:
+            plt.yscale("log")
+            path += "_log"
+
+        if args.show:
+            plt.show()
+        else:
+            save_plot(path, extension=args.extension)
 
         # # Plot version 2
         # for [d, m, a], tag_set in tqdm(joined_keys.items(), leave=False):
