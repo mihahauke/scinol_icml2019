@@ -4,7 +4,6 @@ import traceback
 import argparse
 import ruamel.yaml as yaml
 from time import strftime
-import tabulate
 from collections import defaultdict
 from models import *
 from datasets import *
@@ -60,7 +59,6 @@ def test(
         raise NotImplementedError()
     if logdir is not None:
         raise NotImplementedError()
-        # tf.gfile.MakeDirs(logdir)
     tf.gfile.MakeDirs(tblogdir)
     tf.reset_default_graph()
     dropout_switch = tf.placeholder_with_default(1.0,
@@ -74,6 +72,7 @@ def test(
         dropout_switch=dropout_switch,
         **model_args)
 
+    # Y target ops
     if dataset.outputs_num == 1:
         y_target = tf.placeholder(tf.float32, [None], name='y-input')
         flat_y = tf.reshape(y, [-1])
@@ -90,19 +89,25 @@ def test(
             correct_predictions = tf.equal(tf.argmax(y, 1), y_target)
 
     mean_cross_entropy = tf.reduce_mean(cross_entropy)
-
     accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
-    # accuracy = tf.metrics.accuracy(y_target, tf.reshape(y,[-1]))
 
     loss = mean_cross_entropy
     optimizer = eval(optimizer_class)(**optimizer_args)
-    # TODO workaround
-    pretrain_step = None
-    preminimize_op = getattr(optimizer, "pre_minimize", None)
-    if callable(preminimize_op):
-        pretrain_step = preminimize_op(x)
+    inputs = {}
+    # Why de faq get_variable doesnt allow NOT TO create a new one and returns error
+    # de faq doesnt it work:
+    # inputs = {tf.get_variable("fully_connected/weights"): x,
+    #           tf.get_variable("fully_connected/biases"): tf.constant(1.0)}
+    # TODO ask about it
+    for var in tf.trainable_variables():
+        if var.name == "fully_connected/weights:0":
+            inputs[var] = tf.reshape(x,[-1,28*28])
+        if var.name =="fully_connected/biases:0":
+            inputs[var] = tf.constant(1.0)
 
+    optimizer.inputs = inputs
     grads_and_vars = optimizer.compute_gradients(loss)
+
     train_step = optimizer.apply_gradients(grads_and_vars)
     # TODO add model args to writer dirs
 
@@ -157,9 +162,6 @@ def test(
     for _ in trange(epochs, desc="{}_{}".format(optim_name, oargs).strip("_")):
         for bx, by in dataset.train_batches():
             batches_processed += 1
-            # TODO workaround
-            if pretrain_step is not None:
-                sess.run(pretrain_step, feed_dict={x: bx, dropout_switch: 1})
             if train_logs:
                 train_summary, _ = sess.run([train_summaries, train_step],
                                             feed_dict={x: bx,
@@ -173,7 +175,7 @@ def test(
                                     dropout_switch: 1})
         # TODO change it to minibatches
         test_x, test_y = dataset.get_test_data()
-        test_summary = sess.run(all_summaries,
+        test_summary = sess.run(test_summaries,
                                 feed_dict={x: test_x,
                                            y_target: test_y,
                                            dropout_switch: 0})
@@ -277,22 +279,25 @@ if __name__ == '__main__':
                         dataset.feature_spread
                         ]
                 lines.append(line)
+            import tabulate
+
             print(tabulate.tabulate(lines, header, floatfmt=".2E"))
             exit(0)
         for dataset_name in datasets:
             dataset = eval(dataset_name)(**config)
-            for model_class, model_args in models:
-                print("Running optimizers for dataset: '{}', model: '{}'".format(dataset.get_name(), model_class))
+            for model, model_args in models:
+                print("Running optimizers for dataset: '{}', model: '{}'".format(dataset.get_name(), model))
                 for optimizer_class, optimizer_args in sorted(optimizers, key=lambda x: x[0]):
                     for _ in range(config["times"]):
                         try:
                             test(
                                 args.tblogdir,
-                                dataset,
-                                model_class,
-                                model_args,
-                                optimizer_class,
-                                optimizer_args,
+                                args.logdir,
+                                dataset=dataset,
+                                model=model,
+                                model_args=model_args,
+                                optimizer_class=optimizer_class,
+                                optimizer_args=optimizer_args,
                                 tag=args.tag,
                                 verbose=args.verbose,
                                 **config)

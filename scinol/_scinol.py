@@ -1,14 +1,24 @@
 import tensorflow as tf
+from tensorflow.python.eager import backprop
+from tensorflow.python.eager import context
+from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import ops
-from tensorflow.python.training import optimizer
+from tensorflow.python.ops import control_flow_ops
+from tensorflow.python.ops import gradients
+from tensorflow.python.ops import variable_scope
+from tensorflow.python.ops import variables
+from tensorflow.python.training import distribute as distribute_lib
+from tensorflow.python.training import distribution_strategy_context
+from tensorflow.python.util import nest
+from tensorflow.python.training.optimizer import Optimizer
 
 SMALL_NUMBER = 1e-5
 
 
-class _BaseOptimizer(optimizer.Optimizer):
+class _BaseOptimizer(Optimizer):
     def __init__(self, *args, **kwargs):
         super(_BaseOptimizer, self).__init__(*args, **kwargs)
-
+        self.inputs = None
 
     def create_const_init_slot(self, v, name, value=0):
         initializer = tf.initializers.constant(value, dtype=v.dtype)
@@ -22,35 +32,97 @@ class _BaseOptimizer(optimizer.Optimizer):
         self._get_or_make_slot_with_initializer(
             v, initializer, v.shape, v.dtype, name, self._name)
 
-
-class _PreApplyOptimizer(_BaseOptimizer):
-    def __init__(self, *args, **kwargs):
-        super(_PreApplyOptimizer, self).__init__(*args, **kwargs)
+    def _retrieve_inputs(self, var_list):
         self.inputs = {}
-
-    # TODO HUGE workaround
-    def pre_minimize(self, raw_features, var_list=None):
-        self.raw_features = raw_features
-
-        if var_list is None:
-            var_list = tf.trainable_variables()
-
-        self._create_slots(var_list)
-        new_var_list = []
+        raise NotImplementedError()
         for var in var_list:
-            if "biases" in var.name:
-                x = tf.constant(1.0, shape=[1])
-                x2 = tf.constant(1.0, shape=[1])
-            else:
-                x = tf.reshape(tf.reduce_mean(self.raw_features, axis=0), [-1, 1])
-                x2 = tf.reshape(tf.reduce_mean(self.raw_features ** 2, axis=0), [-1, 1])
-            self.inputs[var] = x, x2
-            new_var_list.append(self._preapply_dense(var))
+            print(var.name, var.outputs)
+            self.inputs[var] = None
 
-        return tf.group(new_var_list)
+    def compute_gradients(self, loss, var_list=None,
+                          gate_gradients=Optimizer.GATE_OP,
+                          aggregation_method=None,
+                          colocate_gradients_with_ops=False,
+                          grad_loss=None):
+        # TODO so many lines just to get var_list :/?
+        if callable(loss):
+            with backprop.GradientTape() as tape:
+                if var_list is not None:
+                    tape.watch(var_list)
+                loss_value = loss()
+
+                # Scale loss if using a "mean" loss reduction and multiple towers.
+                # Have to be careful to call distribute_lib.get_loss_reduction()
+                # *after* loss() is evaluated, so we know what loss reduction it uses.
+                # TODO(josh11b): Test that we handle weight decay in a reasonable way.
+                if (distribute_lib.get_loss_reduction() ==
+                        variable_scope.VariableAggregation.MEAN):
+                    num_towers = distribution_strategy_context.get_distribution_strategy(
+                    ).num_towers
+                    if num_towers > 1:
+                        loss_value *= (1. / num_towers)
+
+            if var_list is None:
+                var_list = tape.watched_variables()
+            # TODO(jhseu): Figure out why GradientTape's gradients don't require loss
+            # to be executed.
+            with ops.control_dependencies([loss_value]):
+                grads = tape.gradient(loss_value, var_list, grad_loss)
+            return list(zip(grads, var_list))
+
+        # Non-callable/Tensor loss case
+        if context.executing_eagerly():
+            raise RuntimeError(
+                "`loss` passed to Optimizer.compute_gradients should "
+                "be a function when eager execution is enabled.")
+
+        # Scale loss if using a "mean" loss reduction and multiple towers.
+        if (distribute_lib.get_loss_reduction() ==
+                variable_scope.VariableAggregation.MEAN):
+            num_towers = distribution_strategy_context.get_distribution_strategy(
+            ).num_towers
+            if num_towers > 1:
+                loss *= (1. / num_towers)
+
+        if gate_gradients not in [Optimizer.GATE_NONE, Optimizer.GATE_OP,
+                                  Optimizer.GATE_GRAPH]:
+            raise ValueError("gate_gradients must be one of: Optimizer.GATE_NONE, "
+                             "Optimizer.GATE_OP, Optimizer.GATE_GRAPH.  Not %s" %
+                             gate_gradients)
+        self._assert_valid_dtypes([loss])
+        if grad_loss is not None:
+            self._assert_valid_dtypes([grad_loss])
+        if var_list is None:
+            var_list = (
+                    variables.trainable_variables() +
+                    ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+        else:
+            var_list = nest.flatten(var_list)
+        # pylint: disable=protected-access
+        var_list += ops.get_collection(ops.GraphKeys._STREAMING_MODEL_PORTS)
+        # pylint: enable=protected-access
+        if not var_list:
+            raise ValueError("No variables to optimize.")
+
+        # if var_list is None:
+        #     var_list = [var for var in tf.trainable_variables() if tf.gradients(var, loss)[0] is not None]
+        # for var in tf.trainable_variables():
+        #     print(var.name, tf.gradients(loss,var))
+        # exit(0)
+        if self.inputs is None:
+            self._retrieve_inputs(var_list)
+        self._create_slots(var_list)
+
+        update_ops = [self._preapply_dense(var) for var in var_list]
+        with tf.control_dependencies(update_ops):
+            return super(_BaseOptimizer, self).compute_gradients(loss, var_list,
+                                                                 gate_gradients,
+                                                                 aggregation_method,
+                                                                 colocate_gradients_with_ops,
+                                                                 grad_loss)
 
 
-class ScinolOptimizer(_PreApplyOptimizer):
+class ScinolOptimizer(_BaseOptimizer):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -72,14 +144,23 @@ class ScinolOptimizer(_PreApplyOptimizer):
                 self.create_const_init_slot(v, "beta", 1)
 
     def _preapply_dense(self, var):
-        x,x2  = self.inputs[var]
+        x = self.inputs[var]
+        if x.shape == []:
+            max_x = tf.abs(x)
+            x2 = x ** 2
+        else:
+            x = tf.expand_dims(x, len(x.shape))
+            x2 = tf.reduce_mean(x ** 2, 0)
+            max_x = tf.reduce_max(tf.abs(x), 0)
+            x2 = tf.broadcast_to(x2, var.get_shape())
+
         beta = self.get_slot(var, "beta")
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
         M = self.get_slot(var, "var_max")
         t = tf.to_float(tf.assign_add(self.t, 1))
 
-        M = tf.assign(M, tf.maximum(M, tf.abs(x)))
+        M = tf.assign(M, tf.maximum(M, max_x))
         beta = tf.assign(beta, tf.minimum(beta, self.epsilon * (S2 + M ** 2) / (x2 * (t + 1))))
 
         theta = G / (S2 + M ** 2) ** 0.5
@@ -96,7 +177,7 @@ class ScinolOptimizer(_PreApplyOptimizer):
         return G, S2
 
 
-class Scinol2Optimizer(_PreApplyOptimizer):
+class Scinol2Optimizer(_BaseOptimizer):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -116,13 +197,19 @@ class Scinol2Optimizer(_PreApplyOptimizer):
                 self.create_const_init_slot(v, "eta", self.epsilon)
 
     def _preapply_dense(self, var):
-        x, _ = self.inputs[var]
+        x = self.inputs[var]
+        if x.shape == []:
+            max_x = tf.abs(x)
+        else:
+            x = tf.expand_dims(x, len(x.shape))
+            max_x = tf.reduce_max(tf.abs(x), 0)
+
         eta = self.get_slot(var, "eta")
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
         M = self.get_slot(var, "var_max")
 
-        M = tf.assign(M, tf.maximum(M, tf.abs(x)))
+        M = tf.assign(M, tf.maximum(M, max_x))
 
         theta = G / (S2 + M ** 2) ** 0.5
 
@@ -141,7 +228,7 @@ class Scinol2Optimizer(_PreApplyOptimizer):
         return tf.group(G, S2, eta)
 
 
-class PreScinolOptimizer(_PreApplyOptimizer):
+class PreScinolOptimizer(_BaseOptimizer):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -166,13 +253,13 @@ class PreScinolOptimizer(_PreApplyOptimizer):
                 # self._get_or_make_slot(v, v, "initial_var", self._name)
 
     def _preapply_dense(self, var):
-        _, x2 = self.inputs[var]
+        x2 = tf.reduce_mean(var ** 2, 0)
         h = self.get_slot(var, "grads_sum")
         s2 = self.get_slot(var, "squared_grads_sum")
 
         broadcasted_x2 = tf.broadcast_to(x2, s2.shape)
-        s2 = tf.assign_add(s2, broadcasted_x2 )
-        new_var = self.epsilon * h / (self.alpha * s2) * tf.exp((h ** 2 + x2 ) / (2 * self.alpha * s2))
+        s2 = tf.assign_add(s2, broadcasted_x2)
+        new_var = self.epsilon * h / (self.alpha * s2) * tf.exp((h ** 2 + x2) / (2 * self.alpha * s2))
 
         # equivalent new_var[s2==0] = 0
         new_var = tf.where(tf.not_equal(s2, 0), new_var, tf.zeros_like(new_var))
@@ -185,7 +272,7 @@ class PreScinolOptimizer(_PreApplyOptimizer):
         return new_h
 
 
-class PreScinol2Optimizer(_PreApplyOptimizer):
+class PreScinol2Optimizer(_BaseOptimizer):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -210,7 +297,7 @@ class PreScinol2Optimizer(_PreApplyOptimizer):
                 self.create_const_init_slot(v, "eta", self.epsilon)
 
     def _preapply_dense(self, var):
-        _, x2 = self.inputs[var]
+        x2 = tf.reduce_mean(var ** 2, 0)
         h = self.get_slot(var, "grads_sum")
         s2 = self.get_slot(var, "squared_grads_sum")
         eta = self.get_slot(var, "eta")
@@ -302,6 +389,3 @@ class PreScinol2DLOptimizer(_BaseOptimizer):
         new_var = tf.assign(var, new_var)
 
         return tf.group(new_var, new_h, new_s2, new_eta)
-
-
-

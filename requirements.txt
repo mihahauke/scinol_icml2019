@@ -4,3 +4,4 @@ tqdm
 python-mnist==0.5
 scikit-learn==0.20
 pmlb
+tabulate

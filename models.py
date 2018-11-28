@@ -17,9 +17,8 @@ def nn(inputs,
        activation_fn=tf.nn.relu):
     inputs = tf.layers.flatten(inputs)
     keep_prob = 1 - (1 - dropout) * dropout_switch
-    for num_units in layers:
+    for i, num_units in enumerate(layers):
         inputs = fully_connected(inputs, num_units, activation_fn=activation_fn)
-
         if dropout and dropout > 0:
             inputs = tf.nn.dropout(inputs, keep_prob)
 
