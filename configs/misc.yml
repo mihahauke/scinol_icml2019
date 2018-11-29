@@ -1,61 +1,7 @@
 optimizers:
-  PreScinolDLOptimizer:
-  PreScinol2DLOptimizer:
-#  PreScinolOptimizer:
-
-#  PreScinol2Optimizer:
-#    - {s0: 0.0000001}
-#  ScinolOptimizer:
-#  COCOBOptimizer:
-#  tf.train.AdamOptimizer:
-#  Scinol2Optimizer:
-#  NAGOptimizer:
-#    - {eta: 0.01 }
-#    - {eta: 0.001 }
-#    - {eta: 0.0001 }
-#  sNAGOptimizer:
-#    - {eta: 0.01 }
-#    - {eta: 0.001 }
-#    - {eta: 0.0001 }
-
-#  COCOBOptimizer0:
-#    - {L0: 0.1}
-
-#    - {alpha: 0}
-#    - {alpha: 100}
-#  tf.train.AdamOptimizer:
-#    - {learning_rate: 0.01 }
-#    - {learning_rate: 0.001 }
-#    - {learning_rate: 0.0001 }
-#  tf.train.GradientDescentOptimizer:
-#    - {learning_rate: 0.01 }
-#    - {learning_rate: 0.001 }
-#    - {learning_rate: 0.0001 }
-#  tf.train.RMSPropOptimizer:
-#    - {learning_rate: 0.01 }
-#    - {learning_rate: 0.001 }
-#    - {learning_rate: 0.0001 }
-#  tf.train.AdagradOptimizer:
-#    - {learning_rate: 0.01 }
-#    - {learning_rate: 0.001 }
-#    - {learning_rate: 0.0001 }
-
-#  - {s0: 1 }
-
-
-#  tf.train.AdadeltaOptimizer:
-#    - {learning_rate: 1.0}
-#    - {learning_rate: 0.001}
-#  tf.train.GradientDescentOptimizer:
-#    - {learning_rate: 0.01 }
-#  tf.train.RMSPropOptimizer:
-#    - {learning_rate: 0.0005 }
-#  tf.train.AdagradOptimizer:
-#    - {learning_rate: 0.00075 }
-##  MetagradOptimizer:
-#    - {num_etas: 20, D: 0.15}
-#    - {num_etas: 10, D: 0.15}
-#    - {num_etas: 5, D: 0.15}
+  scinol:
+  scinol2:
+  cocob:
 models:
 #  - nn_1000_500
 #  - nn_1000_500_elu
@@ -68,7 +14,13 @@ datasets:
 #- SynthNormal
 #- SynthScaled
 #  - SynthOutliers
-- Mnist
+  - Mnist
+#  - UCI_Madelon
+#  - UCI_Bank
+#  - UCI_Census
+#  - UCI_Covertype
+#  - PennShuttle
+#  - PennShuttle
 #  - PennPoker
 #  - PennSleep
 #  - PennFars
@@ -77,6 +29,7 @@ datasets:
 #  - PennShuttle
 
 train_batchsize: 256
-epochs: 30
+epochs: 5
 times: 1
 train_histograms: False
+train_logs: False

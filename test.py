@@ -21,6 +21,15 @@ DEFAULT_ONE_HOT = True
 
 def _parse_list_dict(list_or_dict):
     if isinstance(list_or_dict, list):
+        return_list = []
+        for obj in list_or_dict:
+            if isinstance(obj,str):
+                return_list.append((obj,{}))
+            elif isinstance(obj,str):
+                assert len(obj) ==1
+                return_list.append((obj.keys()[0], {}))
+            else:
+                raise ValueError()
         return [(k, {}) for k in list_or_dict]
     elif isinstance(list_or_dict, dict):
         return_list = []
@@ -101,8 +110,8 @@ def test(
     # TODO ask about it
     for var in tf.trainable_variables():
         if var.name == "fully_connected/weights:0":
-            inputs[var] = tf.reshape(x,[-1,28*28])
-        if var.name =="fully_connected/biases:0":
+            inputs[var] = tf.reshape(x, [-1, 28 * 28])
+        if var.name == "fully_connected/biases:0":
             inputs[var] = tf.constant(1.0)
 
     optimizer.inputs = inputs
@@ -239,8 +248,20 @@ if __name__ == '__main__':
             raise NotImplementedError("tag ...")
 
         config = defaultdict(lambda: None, yaml.safe_load(open(args.config)))
-        optimizers = _parse_list_dict(config["optimizers"])
-        models = _parse_list_dict(config["models"])
+        try:
+            optimizers = _parse_list_dict(config["optimizers"])
+        except:
+            print("Failed to parse optimizers from config:")
+            print(config["optimizers"])
+            print("Aborting!")
+            exit(1)
+        try:
+            models = _parse_list_dict(config["models"])
+        except:
+            print("Failed to parse optimizers from config:")
+            print(config["optimizers"])
+            print("Aborting!")
+            exit(1)
 
         if args.verbose:
             print("Optimizers:")
