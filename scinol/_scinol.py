@@ -13,6 +13,7 @@ from tensorflow.python.util import nest
 from tensorflow.python.training.optimizer import Optimizer
 
 SMALL_NUMBER = 1e-5
+DEFAULT_UNPUTS_SUFFIX = "input"
 
 
 class _BaseOptimizer(Optimizer):
@@ -33,11 +34,18 @@ class _BaseOptimizer(Optimizer):
             v, initializer, v.shape, v.dtype, name, self._name)
 
     def _retrieve_inputs(self, var_list):
+
         self.inputs = {}
-        raise NotImplementedError()
+        operations = {op.name: op for op in tf.get_default_graph().get_operations()}
         for var in var_list:
-            print(var.name, var.outputs)
-            self.inputs[var] = None
+            op_name = var.op.name + "/{}".format("input")
+            inputs = operations.get(op_name, None)
+            if inputs is None:
+                inputs = tf.constant(1.0, name=op_name)
+            # TODO does it work in more general cases?
+            if isinstance(inputs, tf.Operation):
+                inputs = inputs.outputs[0]
+            self.inputs[var] = inputs
 
     def compute_gradients(self, loss, var_list=None,
                           gate_gradients=Optimizer.GATE_OP,
@@ -94,8 +102,8 @@ class _BaseOptimizer(Optimizer):
             self._assert_valid_dtypes([grad_loss])
         if var_list is None:
             var_list = (
-                    variables.trainable_variables() +
-                    ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+                variables.trainable_variables() +
+                ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
         else:
             var_list = nest.flatten(var_list)
         # pylint: disable=protected-access
@@ -104,11 +112,6 @@ class _BaseOptimizer(Optimizer):
         if not var_list:
             raise ValueError("No variables to optimize.")
 
-        # if var_list is None:
-        #     var_list = [var for var in tf.trainable_variables() if tf.gradients(var, loss)[0] is not None]
-        # for var in tf.trainable_variables():
-        #     print(var.name, tf.gradients(loss,var))
-        # exit(0)
         if self.inputs is None:
             self._retrieve_inputs(var_list)
         self._create_slots(var_list)

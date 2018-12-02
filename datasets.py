@@ -7,7 +7,7 @@ import tarfile
 import numpy as np
 from mnist import MNIST
 from six.moves import urllib
-from distributions import normal_scaled, normal_dist_outliers, normal
+from distributions import *
 
 from sklearn.preprocessing import StandardScaler
 # TODO deprecation here
@@ -107,7 +107,7 @@ class _Dataset():
         all_data = np.concatenate([self.train[0], self.test[0]], axis=0)
         flat_data = all_data.reshape(len(all_data), -1)
         # l2norm = ((flat_data ** 2).sum(0)) ** 0.5
-        l2norm = np.linalg.norm(flat_data,axis=0)
+        l2norm = np.linalg.norm(flat_data, axis=0)
         l2norm = l2norm[l2norm > 0]
         return l2norm.max() / l2norm.min()
 
@@ -431,7 +431,7 @@ class Synthetic(_Dataset):
     def __init__(self,
                  name="normal",
                  size=100000,
-                 num_features=10,
+                 num_features=21,
                  test_ratio=0.33,
                  seed=None,
                  distribution=normal_scaled,
@@ -465,17 +465,14 @@ class SyntheticStandardized(Synthetic):
         self.test[0] = scaler.transform(self.test[0])
 
 
-SynthNormal = lambda **kwargs: Synthetic(
-    name="normal",
-    size=100000,
-    distribution=normal,
-    **kwargs)
 SynthScaled = lambda **kwargs: Synthetic(
-    name="scaled",
+    name="art_scaled",
+    size=25000,
+    test_ratio=0.8,
     distribution=normal_scaled,
     **kwargs)
 SynthOutliers = lambda **kwargs: Synthetic(
-    name="outliers",
+    name="art_outliers",
     distribution=normal_dist_outliers,
     **kwargs)
 

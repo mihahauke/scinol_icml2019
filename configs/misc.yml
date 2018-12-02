@@ -14,12 +14,12 @@ datasets:
 #- SynthNormal
 #- SynthScaled
 #  - SynthOutliers
-  - Mnist
-#  - UCI_Madelon
-#  - UCI_Bank
-#  - UCI_Census
-#  - UCI_Covertype
-#  - PennShuttle
+#  - Mnist
+  - UCI_Madelon
+  - UCI_Bank
+  - UCI_Census
+  - UCI_Covertype
+  - PennShuttle
 #  - PennShuttle
 #  - PennPoker
 #  - PennSleep
@@ -29,7 +29,7 @@ datasets:
 #  - PennShuttle
 
 train_batchsize: 256
-epochs: 5
+epochs: 20
 times: 1
 train_histograms: False
 train_logs: False

@@ -7,31 +7,41 @@ import tensorflow as tf
 # class Model(object):
 #     def __init__(self, name, ):
 #         self._name = name
+def fc(inputs, scope, *args, **kwargs):
+    inputs = tf.identity(inputs, name="{}/weights/input".format(scope))
+    return fully_connected(inputs, scope=scope, *args, **kwargs)
+
+
+def conv(inputs, scope, *args, **kwargs):
+    raise NotImplementedError()
 
 
 def nn(inputs,
        outputs_num,
-       dropout_switch,
        layers,
+       dropout_switch=0.0,
        dropout=0.9,
        activation_fn=tf.nn.relu):
     inputs = tf.layers.flatten(inputs)
     keep_prob = 1 - (1 - dropout) * dropout_switch
     for i, num_units in enumerate(layers):
-        inputs = fully_connected(inputs, num_units, activation_fn=activation_fn)
+        inputs = fc(inputs,
+                    num_outputs=num_units,
+                    scope="fc{}".format(i),
+                    activation_fn=activation_fn)
         if dropout and dropout > 0:
             inputs = tf.nn.dropout(inputs, keep_prob)
 
-    return fully_connected(inputs, outputs_num, activation_fn=None)
+    return fc(inputs, "fc_out", num_outputs=outputs_num, activation_fn=None)
 
 
 def cnn(inputs,
         outputs_num,
-        dropout_switch,
         filters,
         kernels,
         strides,
         fc_layers,
+        dropout_switch=0.0,
         pooling=None,
         dropout=0.9,
         activation_fn=tf.nn.relu):
@@ -59,65 +69,70 @@ def cnn(inputs,
                                     padding='SAME')
 
     inputs = tf.layers.flatten(inputs)
-    for num_units in fc_layers:
-        inputs = fully_connected(inputs, num_units, activation_fn=activation_fn)
-        if dropout and dropout > 0:
-            inputs = tf.nn.dropout(inputs, keep_prob)
-
-    return fully_connected(inputs, outputs_num, activation_fn=None)
+    mlp = nn(inputs,
+             outputs_num,
+             layers=fc_layers,
+             dropout_switch=dropout_switch,
+             dropout=dropout,
+             activation_fn=activation_fn)
+    return mlp
 
 
 def lr(inputs, outputs_num, *args, **kwargs):
     inputs = tf.layers.flatten(inputs)
-    return fully_connected(inputs, outputs_num, activation_fn=None)
+    return fc(inputs,
+              scope="fc_lr",
+              num_outputs=outputs_num,
+              activation_fn=None)
 
 
 def lr0(inputs, outputs_num, *args, **kwargs):
     inputs = tf.layers.flatten(inputs)
-    return fully_connected(inputs,
-                           outputs_num,
-                           activation_fn=None,
-                           biases_initializer=tf.initializers.zeros,
-                           weights_initializer=tf.initializers.zeros)
+    return fc(inputs,
+              scope="fc_lr0",
+              num_outputs=outputs_num,
+              activation_fn=None,
+              biases_initializer=tf.initializers.zeros,
+              weights_initializer=tf.initializers.zeros)
 
 
-def cocob_cnn(inputs, outputs_num, dropout_switch):
-    return cnn(
-        inputs,
-        outputs_num,
-        dropout_switch,
-        dropout=0.5,
-        filters=[32, 64],
-        kernels=[5, 5],
-        strides=[1, 1],
-        pooling=2,
-        fc_layers=[1024]
-    )
-
-
-def cnn_simple(inputs, outputs_num, dropout_switch):
-    return cnn(
-        inputs,
-        outputs_num,
-        dropout_switch,
-        filters=[64, 32],
-        kernels=[4, 3],
-        strides=[2, 1],
-        fc_layers=[500]
-    )
-
-
-def cnn_simple_elu(inputs, outputs_num, dropout_switch):
-    return cnn(
-        inputs,
-        outputs_num,
-        dropout_switch,
-        filters=[64, 32],
-        kernels=[4, 3],
-        strides=[2, 1],
-        fc_layers=[500],
-        activation_fn=tf.nn.elu
-    )
+# def cocob_cnn(inputs, outputs_num, dropout_switch=0.0):
+#     return cnn(
+#         inputs,
+#         outputs_num,
+#         dropout_switch,
+#         dropout=0.5,
+#         filters=[32, 64],
+#         kernels=[5, 5],
+#         strides=[1, 1],
+#         pooling=2,
+#         fc_layers=[1024]
+#     )
+#
+#
+# def cnn_simple(inputs, outputs_num, dropout_switch):
+#     return cnn(
+#         inputs,
+#         outputs_num,
+#         dropout_switch,
+#         filters=[64, 32],
+#         kernels=[4, 3],
+#         strides=[2, 1],
+#         fc_layers=[500]
+#     )
+#
+#
+# def cnn_simple_elu(inputs, outputs_num, dropout_switch):
+#     return cnn(
+#         inputs,
+#         outputs_num,
+#         dropout_switch,
+#         filters=[64, 32],
+#         kernels=[4, 3],
+#         strides=[2, 1],
+#         fc_layers=[500],
+#         activation_fn=tf.nn.elu
+#     )
 
 
 def _variable_on_cpu(name, shape, initializer):
