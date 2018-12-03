@@ -21,6 +21,15 @@ DEFAULT_ONE_HOT = True
 
 def _parse_list_dict(list_or_dict):
     if isinstance(list_or_dict, list):
+        return_list = []
+        for obj in list_or_dict:
+            if isinstance(obj, str):
+                return_list.append((obj, {}))
+            elif isinstance(obj, str):
+                assert len(obj) == 1
+                return_list.append((obj.keys()[0], {}))
+            else:
+                raise ValueError()
         return [(k, {}) for k in list_or_dict]
     elif isinstance(list_or_dict, dict):
         return_list = []
@@ -99,11 +108,12 @@ def test(
     # inputs = {tf.get_variable("fully_connected/weights"): x,
     #           tf.get_variable("fully_connected/biases"): tf.constant(1.0)}
     # TODO ask about it
-    for var in tf.trainable_variables():
-        if var.name == "fully_connected/weights:0":
-            inputs[var] = tf.reshape(x,[-1,28*28])
-        if var.name =="fully_connected/biases:0":
-            inputs[var] = tf.constant(1.0)
+    inputs = None
+    # for var in tf.trainable_variables():
+    #     if var.name == "fully_connected/weights:0":
+    #         inputs[var] = tf.reshape(x, [-1, 28 * 28])
+    #     if var.name == "fully_connected/biases:0":
+    #         inputs[var] = tf.constant(1.0)
 
     optimizer.inputs = inputs
     grads_and_vars = optimizer.compute_gradients(loss)
@@ -135,10 +145,14 @@ def test(
     prefix = "{}/{}/{}/{}/{}_{}".format(tblogdir, dataset.get_name(), model, time, optim_name, oargs)
     prefix = prefix.strip("_")
     if train_logs:
-        train_writer = tf.summary.FileWriter(prefix + '/train', flush_secs=FLUSH_SECS)
+        train_writer = tf.summary.FileWriter(prefix + '/train',
+                                             graph=tf.get_default_graph(),
+                                             flush_secs=FLUSH_SECS)
     else:
         train_writer = None
-    test_writer = tf.summary.FileWriter(prefix + '/test', flush_secs=FLUSH_SECS)
+    test_writer = tf.summary.FileWriter(prefix + '/test',
+                                        graph=tf.get_default_graph(),
+                                        flush_secs=FLUSH_SECS)
 
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
@@ -182,7 +196,9 @@ def test(
         test_writer.add_summary(test_summary, batches_processed)
 
     if train_writer is not None:
+        train_writer.flush()
         train_writer.close()
+    test_writer.flush()
     test_writer.close()
     sess.close()
 
@@ -239,8 +255,20 @@ if __name__ == '__main__':
             raise NotImplementedError("tag ...")
 
         config = defaultdict(lambda: None, yaml.safe_load(open(args.config)))
-        optimizers = _parse_list_dict(config["optimizers"])
-        models = _parse_list_dict(config["models"])
+        try:
+            optimizers = _parse_list_dict(config["optimizers"])
+        except:
+            print("Failed to parse optimizers from config:")
+            print(config["optimizers"])
+            print("Aborting!")
+            exit(1)
+        try:
+            models = _parse_list_dict(config["models"])
+        except:
+            print("Failed to parse optimizers from config:")
+            print(config["optimizers"])
+            print("Aborting!")
+            exit(1)
 
         if args.verbose:
             print("Optimizers:")
