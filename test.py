@@ -302,7 +302,7 @@ if __name__ == '__main__':
                                 verbose=args.verbose,
                                 **config)
                         except Exception as ex:
-                            print("=============== EXCETPION ===============")
+                            print("=============== EXCEPTION ===============")
                             print("=============== {} ===============".format(optimizer_class))
                             print(ex)
                             traceback.print_exc(file=sys.stdout)
