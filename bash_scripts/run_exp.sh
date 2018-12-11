@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 ACTUAL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd ${ACTUAL_DIR}
+cd ${ACTUAL_DIR}/..
 
-docker_script=~/optimizers/docker/build_n_run.sh
+docker_script="~/optimizers/docker/build_n_run.sh"
 configs_dir="configs/exp"
 
 ./docker/slurm.sh "mnist" ${docker_script} ./test.py -c ${configs_dir}/exp_mnist.yml
