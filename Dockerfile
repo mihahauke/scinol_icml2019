@@ -13,7 +13,7 @@ RUN pip3 install pip --upgrade
 
 
 RUN pip3 --no-cache-dir install \
-         tensorflow==1.12.0 \
+         tensorflow-gpu==1.12.0 \
          ruamel.yaml \
          numpy \
          tqdm \

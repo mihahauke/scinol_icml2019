@@ -12,6 +12,7 @@ LOGFILE=${LOGDIR}/`date +"%m_%d_%H_%M_%S"`_`hostname`_${TAG}.log
 
 sbatch  -J ${TAG} \
 	-p lab-ci \
+	--exclusive \
 	-o ${LOGFILE} \
 	 ${SCRIPT} ${ARGS}
 
