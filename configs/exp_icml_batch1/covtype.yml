@@ -1,0 +1,90 @@
+optimizers:
+  scinol:
+  scinol2:
+  cocob:
+  adam:
+    - {learning_rate: 10.0 }
+    - {learning_rate: 5.0 }
+    - {learning_rate: 1.0 }
+    - {learning_rate: 0.5 }
+    - {learning_rate: 0.1 }
+    - {learning_rate: 0.05 }
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.005 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+    - {learning_rate: 0.00001 }
+  adagrad:
+    - {learning_rate: 10.0 }
+    - {learning_rate: 5.0 }
+    - {learning_rate: 1.0 }
+    - {learning_rate: 0.5 }
+    - {learning_rate: 0.1 }
+    - {learning_rate: 0.05 }
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.005 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+    - {learning_rate: 0.00001 }
+  sgd:
+    - {learning_rate: 10.0 }
+    - {learning_rate: 5.0 }
+    - {learning_rate: 1.0 }
+    - {learning_rate: 0.5 }
+    - {learning_rate: 0.1 }
+    - {learning_rate: 0.05 }
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.005 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+    - {learning_rate: 0.00001 }
+  nag:
+    - {learning_rate: 10.0 }
+    - {learning_rate: 5.0 }
+    - {learning_rate: 1.0 }
+    - {learning_rate: 0.5 }
+    - {learning_rate: 0.1 }
+    - {learning_rate: 0.05 }
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.005 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+    - {learning_rate: 0.00001 }
+  rmsprop:
+    - {learning_rate: 10.0 }
+    - {learning_rate: 5.0 }
+    - {learning_rate: 1.0 }
+    - {learning_rate: 0.5 }
+    - {learning_rate: 0.1 }
+    - {learning_rate: 0.05 }
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.005 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+    - {learning_rate: 0.00001 }
+  adadelta:
+    - {learning_rate: 10.0 }
+    - {learning_rate: 5.0 }
+    - {learning_rate: 1.0 }
+    - {learning_rate: 0.5 }
+    - {learning_rate: 0.1 }
+    - {learning_rate: 0.05 }
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.005 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+    - {learning_rate: 0.00001 }
+
+models:
+  - lr0
+
+
+datasets:
+  - UCI_Covertype
+
+train_batchsize: 1
+epochs: 10
+times: 1
+train_histograms: False
+train_logs: False
+no_tqdm: True

@@ -19,7 +19,7 @@ adam = tf.train.AdamOptimizer
 adadelta = tf.train.AdadeltaOptimizer
 
 
-def sgd(learning_rate, use_locking=False, name="SGD", decay=None,*args,**kwargs):
+def sgd(learning_rate, use_locking=False, name="SGD", decay="sqrt",*args,**kwargs):
     if decay is not None:
         t = tf.train.get_or_create_global_step()
         t = tf.assign_add(t, 1)

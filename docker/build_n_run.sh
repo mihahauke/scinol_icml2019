@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-cd ~/optimizers
+cd /home/mkempka/optimizers
 IMAGE_TAG="optim"
 docker build -t ${IMAGE_TAG} .
 ./docker/run.sh  "$@"
