@@ -33,7 +33,7 @@ class NAGOptimizer(_BaseOptimizer):
             x = tf.expand_dims(x, len(x.shape))
             x2 = tf.reduce_mean(x ** 2, 0)
             x2 = tf.broadcast_to(x2, var.get_shape())
-            
+
         s = self.get_slot(var, "s")
         new_s = tf.assign(s, tf.maximum(s, tf.abs(x)))
         new_var = tf.assign(var, var * (s / new_s))

@@ -102,8 +102,8 @@ class _BaseOptimizer(Optimizer):
             self._assert_valid_dtypes([grad_loss])
         if var_list is None:
             var_list = (
-                variables.trainable_variables() +
-                ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+                    variables.trainable_variables() +
+                    ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
         else:
             var_list = nest.flatten(var_list)
         # pylint: disable=protected-access
@@ -131,18 +131,19 @@ class ScinolOptimizer(_BaseOptimizer):
     See this [paper](TODO)
     """
 
-    def __init__(self, epsilon=1.0, s0=0, name="ScInOl", use_locking=False):
+    def __init__(self, epsilon=1.0, s0=0, name="ScInOl", beta=None, use_locking=False):
         super(ScinolOptimizer, self).__init__(use_locking, name)
         self.epsilon = float(epsilon)
         self.s0 = s0
         self.t = tf.train.get_or_create_global_step()
+        self.beta = beta
 
     def _create_slots(self, var_list):
         for v in var_list:
             with ops.colocate_with(v):
                 self.create_const_init_slot(v, "grads_sum", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
-                # self._get_or_make_slot(v, v, "initial_var", self._name)
+                self._get_or_make_slot(v, v, "initial_var", self._name)
                 self.create_const_init_slot(v, "var_max", SMALL_NUMBER)
                 self.create_const_init_slot(v, "beta", 1)
 
@@ -161,14 +162,18 @@ class ScinolOptimizer(_BaseOptimizer):
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
         M = self.get_slot(var, "var_max")
+        var0 = self.get_slot(var, "initial_var")
         t = tf.to_float(tf.assign_add(self.t, 1))
 
         M = tf.assign(M, tf.maximum(M, max_x))
-        beta = tf.assign(beta, tf.minimum(beta, self.epsilon * (S2 + M ** 2) / (x2 * (t + 1))))
+        if self.beta is not None:
+            beta = tf.constant(1.0)
+        else:
+            beta = tf.assign(beta, tf.minimum(beta, self.epsilon * (S2 + M ** 2) / (x2 * (t + 1))))
 
         theta = G / (S2 + M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
-        return tf.assign(var, new_var)
+        return tf.assign(var, var0 + new_var)
 
     def _apply_dense(self, grad, var):
         G = self.get_slot(var, "grads_sum")
@@ -195,6 +200,7 @@ class Scinol2Optimizer(_BaseOptimizer):
         for v in var_list:
             with ops.colocate_with(v):
                 self.create_const_init_slot(v, "grads_sum", 0)
+                self._get_or_make_slot(v, v, "initial_var", self._name)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "var_max", SMALL_NUMBER)
                 self.create_const_init_slot(v, "eta", self.epsilon)
@@ -211,22 +217,24 @@ class Scinol2Optimizer(_BaseOptimizer):
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
         M = self.get_slot(var, "var_max")
+        var0 = self.get_slot(var, "initial_var")
 
         M = tf.assign(M, tf.maximum(M, max_x))
 
         theta = G / (S2 + M ** 2) ** 0.5
 
         new_var = tf.sign(theta) * tf.minimum(tf.abs(theta), 1.0) / (2 * (S2 + M ** 2) ** 0.5) * eta
-        return tf.assign(var, new_var)
+        return tf.assign(var, var0 + new_var)
 
     def _apply_dense(self, grad, var):
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
         eta = self.get_slot(var, "eta")
+        var0 = self.get_slot(var, "initial_var")
 
         G = tf.assign_add(G, -grad)
         S2 = tf.assign_add(S2, (grad) ** 2)
-        eta = tf.assign_add(eta, -grad * var)
+        eta = tf.assign_add(eta, -grad * (var - var0))
 
         return tf.group(G, S2, eta)
 
