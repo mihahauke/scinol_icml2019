@@ -254,7 +254,13 @@ if __name__ == '__main__':
         if args.tag is not None:
             raise NotImplementedError("tag ...")
 
-        config = defaultdict(lambda: None, yaml.safe_load(open(args.config)))
+        try:
+            config = defaultdict(lambda: None, yaml.safe_load(open(args.config)))
+        except:
+            print("Failed to load config!")
+            traceback.print_exc(file=sys.stdout)
+            print("Aborting!")
+            exit(1)
         try:
             optimizers = _parse_list_dict(config["optimizers"])
         except:
@@ -264,12 +270,12 @@ if __name__ == '__main__':
             exit(1)
         try:
             models = _parse_list_dict(config["models"])
+
         except:
-            print("Failed to parse optimizers from config:")
-            print(config["optimizers"])
+            print("Failed to parse models from config:")
+            print(config["models"])
             print("Aborting!")
             exit(1)
-
         if args.verbose:
             print("Optimizers:")
             for optim, oargs in optimizers:

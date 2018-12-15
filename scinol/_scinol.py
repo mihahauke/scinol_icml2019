@@ -128,7 +128,12 @@ class ScinolOptimizer(_BaseOptimizer):
     See this [paper](TODO)
     """
 
-    def __init__(self, epsilon=1.0, s0=0, name="ScInOl", beta=None, use_locking=False):
+    def __init__(self,
+                 epsilon=1.0,
+                 s0=0,
+                 name="ScInOl",
+                 beta=None,
+                 use_locking=False):
         super(ScinolOptimizer, self).__init__(use_locking, name)
         self.epsilon = float(epsilon)
         self.s0 = s0
@@ -188,7 +193,11 @@ class Scinol2Optimizer(_BaseOptimizer):
     See this [paper](TODO)
     """
 
-    def __init__(self, epsilon=1.0, s0=0, name="ScInOl2", use_locking=False):
+    def __init__(self,
+                 epsilon=1.0,
+                 s0=0,
+                 name="ScInOl2",
+                 use_locking=False):
         super(Scinol2Optimizer, self).__init__(use_locking, name)
         self.epsilon = float(epsilon)
         self.s0 = s0
@@ -234,4 +243,3 @@ class Scinol2Optimizer(_BaseOptimizer):
         eta = tf.assign_add(eta, -grad * (var - var0))
 
         return tf.group(G, S2, eta)
-

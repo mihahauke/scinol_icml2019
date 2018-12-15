@@ -13,7 +13,14 @@ def fc(inputs, scope, *args, **kwargs):
 
 
 def conv(inputs, scope, *args, **kwargs):
-    raise NotImplementedError()
+    inputs = tf.identity(inputs, name="{}/weights/input".format(scope))
+
+    return tf.layers.conv2d(
+        inputs,
+        name=scope,
+        *args,
+        **kwargs
+    )
 
 
 def nn(inputs,
@@ -37,8 +44,8 @@ def nn(inputs,
 
 def cnn(inputs,
         outputs_num,
-        filters,
-        kernels,
+        filters_nums,
+        kernel_sizes,
         strides,
         fc_layers,
         dropout_switch=0.0,
@@ -47,17 +54,18 @@ def cnn(inputs,
         activation_fn=tf.nn.relu):
     keep_prob = 1 - (1 - dropout) * dropout_switch
 
-    if len(kernels) != len(strides) or len(kernels) != len(filters):
+    if len(kernel_sizes) != len(strides) or len(kernel_sizes) != len(filters_nums):
         raise ValueError()
     if len(fc_layers) == 0:
         raise ValueError()
 
-    for filters_num, kernel_size, stride in zip(filters, kernels, strides):
-        inputs = tf.layers.conv2d(
+    for i, [filters_num, kernel_size, stride] in enumerate(zip(filters_nums, kernel_sizes, strides)):
+        inputs = conv(
             inputs,
-            filters_num,
-            kernel_size,
-            stride,
+            strides=stride,
+            filters=filters_num,
+            kernel_size=kernel_size,
+            scope="conv_{}".format(i),
             data_format='channels_last',
             padding="VALID",
             activation=activation_fn
