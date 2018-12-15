@@ -169,7 +169,7 @@ class ScinolOptimizer(_BaseOptimizer):
 
         M = tf.assign(M, tf.maximum(M, max_x))
         if self.beta is not None:
-            beta = tf.constant(1.0)
+            beta = tf.constant(float(self.beta))
         else:
             beta = tf.assign(beta, tf.minimum(beta, self.epsilon * (S2 + M ** 2) / (x2 * (t + 1))))
 

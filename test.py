@@ -19,6 +19,7 @@ DEFAULT_EPOCHS = 30
 DEFAULT_ONE_HOT = True
 
 
+# TODO parsing a list is not needed anymore . .. i think
 def _parse_list_dict(list_or_dict):
     if isinstance(list_or_dict, list):
         return_list = []
@@ -75,11 +76,8 @@ def test(
                                                  name='dropout_switch')
 
     x = tf.placeholder(tf.float32, [None] + dataset.input_shape, name='x-input')
-    y = eval(model)(
-        x,
-        dataset.outputs_num,
-        dropout_switch=dropout_switch,
-        **model_args)
+    model = eval(model)(**model_args)
+    y = model(x, dataset.outputs_num, dropout_switch=dropout_switch)
 
     # Y target ops
     if dataset.outputs_num == 1:
@@ -108,16 +106,7 @@ def test(
     # inputs = {tf.get_variable("fully_connected/weights"): x,
     #           tf.get_variable("fully_connected/biases"): tf.constant(1.0)}
     # TODO ask about it
-    inputs = None
-    # for var in tf.trainable_variables():
-    #     if var.name == "fully_connected/weights:0":
-    #         inputs[var] = tf.reshape(x, [-1, 28 * 28])
-    #     if var.name == "fully_connected/biases:0":
-    #         inputs[var] = tf.constant(1.0)
-
-    optimizer.inputs = inputs
     grads_and_vars = optimizer.compute_gradients(loss)
-
     train_step = optimizer.apply_gradients(grads_and_vars)
     # TODO add model args to writer dirs
 
@@ -126,8 +115,9 @@ def test(
     grad_hist_summaries = []
     var_hist_summaries = []
     for grad, var in grads_and_vars:
-        g_summary = tf.summary.histogram('{}/{}/gradients/{}'.format(summaries_prefix, model, var.name), grad)
-        v_summary = tf.summary.histogram('{}/{}/{}'.format(summaries_prefix, model, var.name), var)
+        g_summary = tf.summary.histogram('{}/{}/gradients/{}'.format(summaries_prefix, model.short_name, var.name),
+                                         grad)
+        v_summary = tf.summary.histogram('{}/{}/{}'.format(summaries_prefix, model.short_name, var.name), var)
         grad_hist_summaries.append(g_summary)
         var_hist_summaries.append(v_summary)
     acc_summary = tf.summary.scalar('{}/accuracy'.format(summaries_prefix), accuracy)
@@ -142,7 +132,7 @@ def test(
     time = strftime("%m.%d_%H-%M-%S")
     optim_name = optimizer.get_name().lower()
     oargs = "_".join(k[0] + str(v) for k, v in sorted(optimizer_args.items()))
-    prefix = "{}/{}/{}/{}/{}_{}".format(tblogdir, dataset.get_name(), model, time, optim_name, oargs)
+    prefix = "{}/{}/{}/{}/{}_{}".format(tblogdir, dataset.get_name(), model.short_name, time, optim_name, oargs)
     prefix = prefix.strip("_")
     if train_logs:
         train_writer = tf.summary.FileWriter(prefix + '/train',
@@ -263,15 +253,14 @@ if __name__ == '__main__':
             exit(1)
         try:
             optimizers = _parse_list_dict(config["optimizers"])
-        except:
+        except ValueError:
             print("Failed to parse optimizers from config:")
             print(config["optimizers"])
             print("Aborting!")
             exit(1)
         try:
             models = _parse_list_dict(config["models"])
-
-        except:
+        except ValueError:
             print("Failed to parse models from config:")
             print(config["models"])
             print("Aborting!")

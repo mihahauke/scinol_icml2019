@@ -3,16 +3,24 @@ from tensorflow.contrib.layers import fully_connected
 import tensorflow as tf
 
 
-# TODO?
-# class Model(object):
-#     def __init__(self, name, ):
-#         self._name = name
-def fc(inputs, scope, *args, **kwargs):
+class _Model(object):
+    def __init__(self, name=None, short_name=None):
+        self.name = name
+        self.short_name = short_name
+
+    def _model(self, inputs, outputs_num, dropout_switch):
+        raise NotImplementedError()
+
+    def __call__(self, inputs, outputs_num, dropout_switch):
+        return self._model(inputs, outputs_num, dropout_switch)
+
+
+def _fc(inputs, scope, *args, **kwargs):
     inputs = tf.identity(inputs, name="{}/weights/input".format(scope))
     return fully_connected(inputs, scope=scope, *args, **kwargs)
 
 
-def conv(inputs, scope, *args, **kwargs):
+def _conv(inputs, scope, *args, **kwargs):
     inputs = tf.identity(inputs, name="{}/weights/input".format(scope))
 
     return tf.layers.conv2d(
@@ -23,85 +31,149 @@ def conv(inputs, scope, *args, **kwargs):
     )
 
 
-def nn(inputs,
-       outputs_num,
-       layers,
-       dropout_switch=0.0,
-       dropout=0.9,
-       activation_fn=tf.nn.relu):
-    inputs = tf.layers.flatten(inputs)
-    keep_prob = 1 - (1 - dropout) * dropout_switch
-    for i, num_units in enumerate(layers):
-        inputs = fc(inputs,
-                    num_outputs=num_units,
-                    scope="fc{}".format(i),
-                    activation_fn=activation_fn)
-        if dropout and dropout > 0:
-            inputs = tf.nn.dropout(inputs, keep_prob)
+class LSTM(_Model):
+    def __init__(self, name=None, short_name=None):
+        super(LSTM, self).__init__(name, short_name)
+        raise NotImplementedError()
 
-    return fc(inputs, "fc_out", num_outputs=outputs_num, activation_fn=None)
+    def _model(self, inputs, outputs_num, dropout_switch):
+        raise NotImplementedError()
 
 
-def cnn(inputs,
-        outputs_num,
-        filters_nums,
-        kernel_sizes,
-        strides,
-        fc_layers,
-        dropout_switch=0.0,
-        pooling=None,
-        dropout=0.9,
-        activation_fn=tf.nn.relu):
-    keep_prob = 1 - (1 - dropout) * dropout_switch
+class LR(_Model):
+    def __init__(self,
+                 name=None,
+                 short_name=None,
+                 init0=False):
+        if init0:
+            self.initializer = tf.initializers.zeros
+            if short_name is None:
+                short_name = "lr0"
+            if name is None:
+                name = "Logistic Regrassion (init0)"
+        else:
+            self.initializer = None
+            if short_name is None:
+                short_name = "lr"
+            if name is None:
+                name = "Logistic Regrassion"
 
-    if len(kernel_sizes) != len(strides) or len(kernel_sizes) != len(filters_nums):
-        raise ValueError()
-    if len(fc_layers) == 0:
-        raise ValueError()
+        super(LR, self).__init__(
+            name,
+            short_name)
 
-    for i, [filters_num, kernel_size, stride] in enumerate(zip(filters_nums, kernel_sizes, strides)):
-        inputs = conv(
-            inputs,
-            strides=stride,
-            filters=filters_num,
-            kernel_size=kernel_size,
-            scope="conv_{}".format(i),
-            data_format='channels_last',
-            padding="VALID",
-            activation=activation_fn
-        )
-        if dropout and dropout > 0:
-            inputs = tf.nn.dropout(inputs, keep_prob)
-        if pooling is not None:
-            inputs = tf.nn.max_pool(inputs, ksize=[1, pooling, pooling, 1], strides=[1, 2, 2, 1],
-                                    padding='SAME')
+    def _model(self, inputs, outputs_num, dropout_switch):
+        inputs = tf.layers.flatten(inputs)
 
-    inputs = tf.layers.flatten(inputs)
-    mlp = nn(inputs,
-             outputs_num,
-             layers=fc_layers,
-             dropout_switch=dropout_switch,
-             dropout=dropout,
-             activation_fn=activation_fn)
-    return mlp
+        return _fc(inputs,
+                   scope="fc_lr",
+                   num_outputs=outputs_num,
+                   activation_fn=None,
+                   biases_initializer=tf.initializers.zeros,
+                   weights_initializer=tf.initializers.zeros)
 
 
-def lr(inputs, outputs_num, *args, **kwargs):
-    inputs = tf.layers.flatten(inputs)
-    return fc(inputs,
-              scope="fc_lr",
-              num_outputs=outputs_num,
-              activation_fn=None)
+class NN(_Model):
+    def __init__(self,
+                 layers,
+                 name=None,
+                 short_name=None,
+                 dropout=0.9,
+                 batch_norm=False,
+                 activation_fn=tf.nn.relu):
+        if name is None:
+            name = "NN {} d{:0.2f} b{}".format(layers, dropout, int(batch_norm))
+        if short_name is None:
+            short_name = "nn_{}_d{:0.2f}_b{}".format(layers, dropout, int(batch_norm))
+        super(NN, self).__init__(
+            name,
+            short_name)
+        if batch_norm and dropout:
+            raise ValueError("Dropout and batchnorm not allowed at once")
+        self.dropout = dropout
+        self.activation_fn = activation_fn
+        self.batch_norm = batch_norm
+        self.layers = layers
+
+    def _model(self, inputs, outputs_num, dropout_switch):
+        inputs = tf.layers.flatten(inputs)
+        keep_prob = 1 - (1 - self.dropout) * dropout_switch
+        for i, num_units in enumerate(self.layers):
+            inputs = _fc(inputs,
+                         num_outputs=num_units,
+                         scope="fc{}".format(i),
+                         activation_fn=self.activation_fn)
+            if self.dropout > 0:
+                inputs = tf.nn.dropout(inputs, keep_prob)
+            if self.batch_norm:
+                inputs = tf.layers.batch_normalization(inputs)
+
+        return _fc(inputs, "fc_out", num_outputs=outputs_num, activation_fn=None)
 
 
-def lr0(inputs, outputs_num, *args, **kwargs):
-    inputs = tf.layers.flatten(inputs)
-    return fc(inputs,
-              scope="fc_lr0",
-              num_outputs=outputs_num,
-              activation_fn=None,
-              biases_initializer=tf.initializers.zeros,
-              weights_initializer=tf.initializers.zeros)
+class CNN(_Model):
+    def __init__(self,
+                 filters_nums,
+                 kernel_sizes,
+                 strides,
+                 fc_layers,
+                 pooling=None,
+                 dropout=0.9,
+                 batch_norm=False,
+                 name=None,
+                 short_name=None,
+                 activation_fn=tf.nn.relu):
+        super(CNN, self).__init__(
+            name,
+            short_name)
+        if batch_norm and dropout:
+            raise ValueError("Dropout and batchnorm not allowed at once")
+        if len(kernel_sizes) != len(strides) or len(kernel_sizes) != len(filters_nums):
+            raise ValueError()
+        if len(fc_layers) == 0:
+            raise ValueError()
+        self.dropout = dropout
+        self.activation_fn = activation_fn
+        self.batch_norm = batch_norm
+        self.filters_nums = filters_nums
+        self.kernel_sizes = kernel_sizes
+        self.strides = strides
+        self.fc_layers = fc_layers
+        self.pooling = pooling,
+
+    def _model(self, inputs, outputs_num, dropout_switch):
+        keep_prob = 1 - (1 - self.dropout) * dropout_switch
+        for i, [filters_num, kernel_size, stride] in enumerate(zip(self.filters_nums, self.kernel_sizes, self.strides)):
+            inputs = _conv(
+                inputs,
+                strides=stride,
+                filters=filters_num,
+                kernel_size=kernel_size,
+                scope="conv_{}".format(i),
+                data_format='channels_last',
+                padding="VALID",
+                activation=self.activation_fn
+            )
+            if self.dropout > 0:
+                inputs = tf.nn.dropout(inputs, keep_prob)
+            if self.batch_norm:
+                inputs = tf.layers.batch_normalization(inputs)
+            if self.pooling is not None:
+                inputs = tf.nn.max_pool(inputs, ksize=[1, self.pooling, self.pooling, 1], strides=[1, 2, 2, 1],
+                                        padding='SAME')
+
+        inputs = tf.layers.flatten(inputs)
+
+        for i, num_units in enumerate(self.fc_layers):
+            inputs = _fc(inputs,
+                         num_outputs=num_units,
+                         scope="fc{}".format(i),
+                         activation_fn=self.activation_fn)
+            if self.dropout > 0:
+                inputs = tf.nn.dropout(inputs, keep_prob)
+            if self.batch_norm:
+                inputs = tf.layers.batch_normalization(inputs)
+        return _fc(inputs, "fc_out", num_outputs=outputs_num, activation_fn=None)
 
 
 # def cocob_cnn(inputs, outputs_num, dropout_switch=0.0):
