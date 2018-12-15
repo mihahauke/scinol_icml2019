@@ -4,9 +4,8 @@ import tensorflow as tf
 
 
 class _Model(object):
-    def __init__(self, name=None, short_name=None):
+    def __init__(self, name=None):
         self.name = name
-        self.short_name = short_name
 
     def _model(self, inputs, outputs_num, dropout_switch):
         raise NotImplementedError()
@@ -32,8 +31,8 @@ def _conv(inputs, scope, *args, **kwargs):
 
 
 class LSTM(_Model):
-    def __init__(self, name=None, short_name=None):
-        super(LSTM, self).__init__(name, short_name)
+    def __init__(self, name=None):
+        super(LSTM, self).__init__(name)
         raise NotImplementedError()
 
     def _model(self, inputs, outputs_num, dropout_switch):
@@ -43,24 +42,19 @@ class LSTM(_Model):
 class LR(_Model):
     def __init__(self,
                  name=None,
-                 short_name=None,
                  init0=False):
         if init0:
             self.initializer = tf.initializers.zeros
-            if short_name is None:
-                short_name = "lr0"
             if name is None:
-                name = "Logistic Regrassion (init0)"
+                name = "lr0"
         else:
+            # Glorot by default
             self.initializer = None
-            if short_name is None:
-                short_name = "lr"
             if name is None:
-                name = "Logistic Regrassion"
+                name = "lr"
 
         super(LR, self).__init__(
-            name,
-            short_name)
+            name)
 
     def _model(self, inputs, outputs_num, dropout_switch):
         inputs = tf.layers.flatten(inputs)
@@ -77,17 +71,13 @@ class NN(_Model):
     def __init__(self,
                  layers,
                  name=None,
-                 short_name=None,
                  dropout=0.9,
                  batch_norm=False,
                  activation_fn=tf.nn.relu):
         if name is None:
-            name = "NN {} d{:0.2f} b{}".format(layers, dropout, int(batch_norm))
-        if short_name is None:
-            short_name = "nn_{}_d{:0.2f}_b{}".format(layers, dropout, int(batch_norm))
+            name = "nn_{}_d{:0.2f}_b{}".format("x".join(layers), dropout, int(batch_norm))
         super(NN, self).__init__(
-            name,
-            short_name)
+            name)
         if batch_norm and dropout:
             raise ValueError("Dropout and batchnorm not allowed at once")
         self.dropout = dropout
@@ -121,11 +111,13 @@ class CNN(_Model):
                  dropout=0.9,
                  batch_norm=False,
                  name=None,
-                 short_name=None,
                  activation_fn=tf.nn.relu):
+        if name is None:
+            desc = "_".join(kernel_sizes)+"_"+"x".join(fc_layers)
+            name = "cnn_{}_d{:0.2f}_b{}".format(desc, dropout, int(batch_norm))
+
         super(CNN, self).__init__(
-            name,
-            short_name)
+            name)
         if batch_norm and dropout:
             raise ValueError("Dropout and batchnorm not allowed at once")
         if len(kernel_sizes) != len(strides) or len(kernel_sizes) != len(filters_nums):

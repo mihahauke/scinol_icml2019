@@ -115,9 +115,9 @@ def test(
     grad_hist_summaries = []
     var_hist_summaries = []
     for grad, var in grads_and_vars:
-        g_summary = tf.summary.histogram('{}/{}/gradients/{}'.format(summaries_prefix, model.short_name, var.name),
+        g_summary = tf.summary.histogram('{}/{}/gradients/{}'.format(summaries_prefix, model.name, var.name),
                                          grad)
-        v_summary = tf.summary.histogram('{}/{}/{}'.format(summaries_prefix, model.short_name, var.name), var)
+        v_summary = tf.summary.histogram('{}/{}/{}'.format(summaries_prefix, model.name, var.name), var)
         grad_hist_summaries.append(g_summary)
         var_hist_summaries.append(v_summary)
     acc_summary = tf.summary.scalar('{}/accuracy'.format(summaries_prefix), accuracy)
@@ -132,7 +132,7 @@ def test(
     time = strftime("%m.%d_%H-%M-%S")
     optim_name = optimizer.get_name().lower()
     oargs = "_".join(k[0] + str(v) for k, v in sorted(optimizer_args.items()))
-    prefix = "{}/{}/{}/{}/{}_{}".format(tblogdir, dataset.get_name(), model.short_name, time, optim_name, oargs)
+    prefix = "{}/{}/{}/{}/{}_{}".format(tblogdir, dataset.get_name(), model.name, time, optim_name, oargs)
     prefix = prefix.strip("_")
     if train_logs:
         train_writer = tf.summary.FileWriter(prefix + '/train',
