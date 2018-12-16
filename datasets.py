@@ -4,18 +4,20 @@ import os
 import sys
 import pickle
 import tarfile
-import numpy as np
+# import numpy as np
 from mnist import MNIST
 from six.moves import urllib
 from distributions import *
 
 from sklearn.preprocessing import StandardScaler
 # TODO deprecation here
-from tensorflow.examples.tutorials.mnist import input_data as mnist_data
+# from tensorflow.examples.tutorials.mnist import input_data as mnist_data
 from pmlb import fetch_data
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.metrics.pairwise import sigmoid_kernel
+from preprocess import load_text
+
+# from sklearn.metrics.pairwise import sigmoid_kernel
 
 MNIST_DOWNLOAD_DIR = '/tmp/mnist_data/'
 MNIST_LECUN_URL = "http://yann.lecun.com/exdb/mnist/"
@@ -26,6 +28,8 @@ MNIST_TRAIN_IMAGES_FILENAME = 'train-images-idx3-ubyte.gz'
 MNIST_TRAIN_LABELS_FILENAME = 'train-labels-idx1-ubyte.gz'
 MNIST_TEST_IMAGES_FILENAME = 't10k-images-idx3-ubyte.gz'
 MNIST_TEST_LABELS_FILENAME = 't10k-labels-idx1-ubyte.gz'
+MNIST_DATA_SHAPE = (28, 28, 1)
+MNIST_CLASSES_NUM = 10
 
 UCI_DATASETS = "http://archive.ics.uci.edu/ml/machine-learning-databases"
 UCI_MADELON = UCI_DATASETS + "/madelon/MADELON"
@@ -45,8 +49,10 @@ CIFAR_DOWNLOAD_DIR = '/tmp/cifar10_data'
 CIFAR_EXTRACT_PATH = 'cifar-10-batches-py'
 CIFAR_DATA_SHAPE = (32, 32, 3)
 CIFAR_CLASSESS_NUM = 10
-MNIST_DATA_SHAPE = (28, 28, 1)
-MNIST_CLASSES_NUM = 10
+
+WNP_LINK = "https://cs.stanford.edu/people/karpathy/char-rnn/warpeace_input.txt"
+WNP_DOWNLOAD_DIR = "/tmp/war_and_peace"
+WNP_FILE = os.path.join(WNP_DOWNLOAD_DIR, "warpeace_input.txt")
 
 
 def _to_one_hot(int_labels):
@@ -448,7 +454,7 @@ class Synthetic(_Dataset):
             name=name,
             train_data=(x_train, y_train),
             test_data=(x_test, y_test),
-            input_shape=[num_features],
+            input_shapmaybee=[num_features],
             num_outputs=2,
             **kwargs)
 
@@ -463,6 +469,56 @@ class SyntheticStandardized(Synthetic):
         scaler = StandardScaler()
         self.train[0] = scaler.fit_transform(self.train[0])
         self.test[0] = scaler.transform(self.test[0])
+
+
+class _CharText(_Dataset):
+    def __init__(self,
+                 link,
+                 file,
+                 download_dir,
+                 name,
+                 test_ratio=0.1,
+                 seed=None,
+                 seq_len=50,
+                 *args,
+                 **kwargs):
+        self.maybe_download(link, download_dir)
+        train, test, token_to_idx = load_text(file, test_frac=test_ratio)
+        # train = _to_one_hot(train)
+        # test = _to_one_hot(test)
+        self.token_to_idx = token_to_idx
+        self.idx_to_token = {v: k for k, v in token_to_idx.items()}
+        self.chars_num = len(token_to_idx)
+        train = train[0:len(train) - len(train) % seq_len + 1]
+        test = test[0:len(test) - len(test) % seq_len + 1]
+        x_train = train[:-1].reshape((-1, seq_len))
+        y_train = train[1:].reshape((-1, seq_len))
+        x_test = test[:-1].reshape((-1, seq_len))
+        y_test = test[1:].reshape((-1, seq_len))
+
+        s = ""
+        for idx in x_train[0][0:10]:
+            s += self.idx_to_token[idx]
+        s = ""
+        for idx in y_train[0][0:10]:
+            s += self.idx_to_token[idx]
+        super(_CharText, self).__init__(
+            name=name,
+            train_data=(x_train, y_train),
+            test_data=(x_test, y_test),
+            input_shape=[seq_len, x_train.shape[1]],
+            num_outputs=x_train.shape[1],
+            **kwargs)
+
+
+class WarAndPeace(_CharText):
+    def __init__(self, *args, **kwargs):
+        super(WarAndPeace, self).__init__(
+            link=WNP_LINK,
+            file=WNP_FILE,
+            download_dir=WNP_DOWNLOAD_DIR,
+            name="warnpeace",
+            *args, **kwargs)
 
 
 SynthScaled = lambda **kwargs: Synthetic(
