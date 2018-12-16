@@ -1,44 +1,24 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-##################################### LICENCE NOTICE #######################################
-
-# The MIT License (MIT)
-#
-# Copyright (c) 2016 Justin Johnson
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-#############################################################################################
+from __future__ import print_function
 
 import argparse
-
 import json
 import six
 import numpy as np
 import h5py
 import codecs
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--input_txt', default='data/tiny-shakespeare.txt')
-parser.add_argument('--output_h5', default='data/tiny-shakespeare.h5')
-parser.add_argument('--output_json', default='data/tiny-shakespeare.json')
-parser.add_argument('--val_frac', type=float, default=0.1)
-parser.add_argument('--test_frac', type=float, default=0.1)
-parser.add_argument('--quiet', action='store_true')
-parser.add_argument('--encoding', default='utf-8')
-args = parser.parse_args()
 
-if __name__ == '__main__':
-    if args.encoding == 'bytes': args.encoding = None
-
+def preprocess(input_txt,
+               encoding,
+               val_frac=0,
+               test_frac=0.1,
+               verbose=False):
     # First go the file once to see how big it is and to build the vocab
     token_to_idx = {}
     total_size = 0
-    with codecs.open(args.input_txt, 'r', args.encoding) as f:
+    with codecs.open(input_txt, 'r', encoding) as f:
         for line in f:
             total_size += len(line)
             for char in line:
@@ -46,11 +26,11 @@ if __name__ == '__main__':
                     token_to_idx[char] = len(token_to_idx) + 1
 
     # Now we can figure out the split sizes
-    val_size = int(args.val_frac * total_size)
-    test_size = int(args.test_frac * total_size)
+    val_size = int(val_frac * total_size)
+    test_size = int(test_frac * total_size)
     train_size = total_size - val_size - test_size
 
-    if not args.quiet:
+    if verbose:
         print('Total vocabulary size: %d' % len(token_to_idx))
         print('Total tokens in file: %d' % total_size)
         print('  Training size: %d' % train_size)
@@ -61,7 +41,7 @@ if __name__ == '__main__':
     dtype = np.uint8
     if len(token_to_idx) > 255:
         dtype = np.uint32
-    if not args.quiet:
+    if verbose:
         print('Using dtype ', dtype)
 
     # Just load data into memory ... we'll have to do something more clever
@@ -73,7 +53,7 @@ if __name__ == '__main__':
 
     # Go through the file again and write data to numpy arrays
     split_idx, cur_idx = 0, 0
-    with codecs.open(args.input_txt, 'r', args.encoding) as f:
+    with codecs.open(input_txt, 'r', encoding) as f:
         for line in f:
             for char in line:
                 splits[split_idx][cur_idx] = token_to_idx[char]
@@ -81,28 +61,57 @@ if __name__ == '__main__':
                 if cur_idx == splits[split_idx].size:
                     split_idx += 1
                     cur_idx = 0
+    return train, val, test, token_to_idx
 
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(dest='input_txt')
+    parser.add_argument('--output', '-o', default=None)
+    parser.add_argument('--val_frac', type=float, default=0.1)
+    parser.add_argument('--test_frac', type=float, default=0.1)
+    parser.add_argument('--verbose', '-v', action='store_true')
+    parser.add_argument('--encoding', '-e', default='utf-8')
+    args = parser.parse_args()
+
+    if args.encoding == 'bytes':
+        args.encoding = None
+
+    train, val, test, token_to_idx = preprocess(
+        input_txt=args.input_txt,
+        encoding=args.encoding,
+        val_frac=args.val_frac,
+        test_frac=args.test_frac,
+        verbose=args.verbose)
+
+    idx_to_token = {v: k for k, v in token_to_idx.items()}
     # Write data to HDF5 file
-    with h5py.File(args.output_h5, 'w') as f:
-        f.create_dataset('train', data=train)
-        f.create_dataset('val', data=val)
-        f.create_dataset('test', data=test)
+    if args.output is None:
+        pass
+    else:
+        output_h5 = args.output_ + ".h5"
+        output_json = args.output + ".json"
 
-    # For 'bytes' encoding, replace non-ascii characters so the json dump
-    # doesn't crash
-    if args.encoding is None:
-        new_token_to_idx = {}
-        for token, idx in six.iteritems(token_to_idx):
-            if ord(token) > 127:
-                new_token_to_idx['[%d]' % ord(token)] = idx
-            else:
-                new_token_to_idx[token] = idx
-        token_to_idx = new_token_to_idx
+        with h5py.File(output_h5, 'w') as f:
+            f.create_dataset('train', data=train)
+            f.create_dataset('val', data=val)
+            f.create_dataset('test', data=test)
 
-    # Dump a JSON file for the vocab
-    json_data = {
-        'token_to_idx': token_to_idx,
-        'idx_to_token': {v: k for k, v in six.iteritems(token_to_idx)},
-    }
-    with open(args.output_json, 'w') as f:
-        json.dump(json_data, f)
+        # For 'bytes' encoding, replace non-ascii characters so the json dump
+        # doesn't crash
+        if args.encoding is None:
+            new_token_to_idx = {}
+            for token, idx in six.iteritems(token_to_idx):
+                if ord(token) > 127:
+                    new_token_to_idx['[%d]' % ord(token)] = idx
+                else:
+                    new_token_to_idx[token] = idx
+            token_to_idx = new_token_to_idx
+
+        # Dump a JSON file for the vocab
+        json_data = {
+            'token_to_idx': token_to_idx,
+            'idx_to_token': {v: k for k, v in token_to_idx.items()},
+        }
+        with open(output_json, 'w') as f:
+            json.dump(json_data, f)
