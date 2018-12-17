@@ -62,6 +62,8 @@ def test(
         train_logs=True,
         no_tqdm=False,
         verbose=False,
+        use_embeddings=False,
+        embedding_size=None,
         *args,
         **kwargs):
     # TODO add tag support
@@ -75,9 +77,16 @@ def test(
                                                  None,
                                                  name='dropout_switch')
 
-    x = tf.placeholder(tf.float32, [None] + dataset.input_shape, name='x-input')
+    if use_embeddings:
+        x = tf.placeholder(tf.int32, [None] + dataset.input_shape, name='x-input')
+        embeddings = tf.get_variable("embedding", [dataset.tokens_num, embedding_size],
+                                     initializer=tf.random_normal_initializer, trainable=True)
+        model_input = tf.nn.embedding_lookup(embeddings,x)
+    else:
+        x = tf.placeholder(tf.float32, [None] + dataset.input_shape, name='x-input')
+        model_input = x
     model = eval(model)(**model_args)
-    y = model(x, dataset.outputs_num, dropout_switch=dropout_switch)
+    y = model(model_input, dataset.outputs_num, dropout_switch=dropout_switch)
 
     # Y target ops
     if dataset.outputs_num == 1:
@@ -147,7 +156,6 @@ def test(
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
     batches_processed = 0
-
     test_x, test_y = dataset.get_test_data()
     test_summary = sess.run(test_summaries,
                             feed_dict={x: test_x,

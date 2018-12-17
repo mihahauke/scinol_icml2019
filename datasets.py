@@ -54,6 +54,9 @@ WNP_LINK = "https://cs.stanford.edu/people/karpathy/char-rnn/warpeace_input.txt"
 WNP_DOWNLOAD_DIR = "/tmp/war_and_peace"
 WNP_FILE = os.path.join(WNP_DOWNLOAD_DIR, "warpeace_input.txt")
 
+PTB_LINK = "http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz"
+PTB_DOWNLOAD_LINK = "/tmp/penn_treebank"
+
 
 def _to_one_hot(int_labels):
     enc = OneHotEncoder(categories='auto')
@@ -477,7 +480,7 @@ class _CharText(_Dataset):
                  file,
                  download_dir,
                  name,
-                 test_ratio=0.1,
+                 test_ratio=0.2,
                  seed=None,
                  seq_len=50,
                  *args,
@@ -488,26 +491,22 @@ class _CharText(_Dataset):
         # test = _to_one_hot(test)
         self.token_to_idx = token_to_idx
         self.idx_to_token = {v: k for k, v in token_to_idx.items()}
-        self.chars_num = len(token_to_idx)
+        self.tokens_num = len(token_to_idx)
         train = train[0:len(train) - len(train) % seq_len + 1]
         test = test[0:len(test) - len(test) % seq_len + 1]
         x_train = train[:-1].reshape((-1, seq_len))
         y_train = train[1:].reshape((-1, seq_len))
         x_test = test[:-1].reshape((-1, seq_len))
         y_test = test[1:].reshape((-1, seq_len))
-
-        s = ""
-        for idx in x_train[0][0:10]:
-            s += self.idx_to_token[idx]
-        s = ""
-        for idx in y_train[0][0:10]:
-            s += self.idx_to_token[idx]
+        # y_train = _to_one_hot(y_train)
+        # y_test = _to_one_hot(y_test)
         super(_CharText, self).__init__(
             name=name,
             train_data=(x_train, y_train),
             test_data=(x_test, y_test),
-            input_shape=[seq_len, x_train.shape[1]],
-            num_outputs=x_train.shape[1],
+            input_shape=[seq_len],
+            num_outputs=y_train.shape[1],
+            one_hot=False,
             **kwargs)
 
 
@@ -517,7 +516,7 @@ class WarAndPeace(_CharText):
             link=WNP_LINK,
             file=WNP_FILE,
             download_dir=WNP_DOWNLOAD_DIR,
-            name="warnpeace",
+            name="warandpeace",
             *args, **kwargs)
 
 

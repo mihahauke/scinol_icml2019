@@ -14,6 +14,7 @@ class _Model(object):
         return self._model(inputs, outputs_num, dropout_switch)
 
 
+# Wrappers that set inputs needed for scinol algos
 def _fc(inputs, scope, *args, **kwargs):
     inputs = tf.identity(inputs, name="{}/weights/input".format(scope))
     return fully_connected(inputs, scope=scope, *args, **kwargs)
@@ -29,14 +30,6 @@ def _conv(inputs, scope, *args, **kwargs):
         **kwargs
     )
 
-
-class LSTM(_Model):
-    def __init__(self, name=None):
-        super(LSTM, self).__init__(name)
-        raise NotImplementedError()
-
-    def _model(self, inputs, outputs_num, dropout_switch):
-        raise NotImplementedError()
 
 
 class LR(_Model):
@@ -75,11 +68,8 @@ class NN(_Model):
                  batch_norm=False,
                  activation_fn=tf.nn.relu):
         if name is None:
-            name = "nn_{}_d{:0.2f}_b{}".format("x".join(layers), dropout, int(batch_norm))
-        super(NN, self).__init__(
-            name)
-        if batch_norm and dropout:
-            raise ValueError("Dropout and batchnorm not allowed at once")
+            name = "nn_{}_d{:0.2f}_b{}".format("x".join([str(l) for l in layers]), dropout, int(batch_norm))
+        super(NN, self).__init__(name)
         self.dropout = dropout
         self.activation_fn = activation_fn
         self.batch_norm = batch_norm
@@ -93,12 +83,71 @@ class NN(_Model):
                          num_outputs=num_units,
                          scope="fc{}".format(i),
                          activation_fn=self.activation_fn)
-            if self.dropout > 0:
-                inputs = tf.nn.dropout(inputs, keep_prob)
             if self.batch_norm:
                 inputs = tf.layers.batch_normalization(inputs)
+            if self.dropout > 0:
+                inputs = tf.nn.dropout(inputs, keep_prob)
 
         return _fc(inputs, "fc_out", num_outputs=outputs_num, activation_fn=None)
+
+
+class CharLSTM(_Model):
+    def __init__(self,
+                 layers=(128, 128),
+                 fc_layers=(128),
+                 rnn_class=tf.contrib.rnn.LSTMCell,
+                 name=None,
+                 dropout=0.0,
+                 batch_norm=False,
+                 activation_fn=tf.nn.relu):
+        if name is None:
+            name = "rnn_{}_d{:0.2f}_b{}".format("x".join([str(l) for l in layers]), dropout, int(batch_norm))
+        super(CharLSTM, self).__init__(name)
+        self.dropout = dropout
+        self.activation_fn = activation_fn
+        self.batch_norm = batch_norm
+        self.layers = layers
+        self.rnn_class = rnn_class
+
+    def _model(self, inputs, outputs_num, dropout_switch):
+        keep_prob = 1 - (1 - self.dropout) * dropout_switch
+        for i, num_units in enumerate(self.layers):
+            inputs = tf.identity(inputs, name="rnn_cell{}/kernel/input".format(i))
+            cell = self.rnn_class(num_units, name="rnn_cell{}".format(i))
+
+            if self.batch_norm:
+                inputs = tf.layers.batch_normalization(inputs)
+            if self.dropout > 0:
+                cell = tf.contrib.rnn.DropoutWrapper(cell,
+                                                     input_keep_prob=keep_prob,
+                                                     output_keep_prob=keep_prob)
+            inputs, states = tf.nn.dynamic_rnn(cell=cell,
+                                               inputs=inputs,
+                                               time_major=True,
+                                               # initial_state = cell_wrapped.zero_state(batch_size=None,
+                                               #                                         dtype=tf.float32),
+                                               dtype=tf.float32,
+                                               scope="rnn_unwind")
+
+        # multicell = tf.contrib.rnn.MultiRNNCell(cells, state_is_tuple=True)
+        # cell_wrapped = tf.contrib.rnn.OutputProjectionWrapper(multicell, output_size=234)
+        # cell_wrapped = cells[0]
+        # zero_state = cell_wrapped.zero_state()
+        # inputs = tf.transpose(inputs, perm=[1, 0, 2])
+
+        # outputs, states = tf.nn.dynamic_rnn(cell=cell_wrapped,
+        #                                     inputs=inputs,
+        #                                     time_major=True,
+        #                                     # initial_state = cell_wrapped.zero_state(batch_size=None,
+        #                                     #                                         dtype=tf.float32),
+        #                                     dtype=tf.float32)
+        # for var in tf.trainable_variables():
+        #     print(var.name, var.shape)
+        # exit(0)
+        # outputs = tf.reshape(outputs, [int(outputs.get_shape()[0]), int(inputs.get_shape()[1])])
+        fc = _fc(inputs, "fc_out", num_outputs=1, activation_fn=None)
+
+        return tf.layers.flatten(fc)
 
 
 class CNN(_Model):
@@ -113,13 +162,11 @@ class CNN(_Model):
                  name=None,
                  activation_fn=tf.nn.relu):
         if name is None:
-            desc = "_".join(kernel_sizes)+"_"+"x".join(fc_layers)
+            desc = "_".join(kernel_sizes) + "_" + "x".join(fc_layers)
             name = "cnn_{}_d{:0.2f}_b{}".format(desc, dropout, int(batch_norm))
 
         super(CNN, self).__init__(
             name)
-        if batch_norm and dropout:
-            raise ValueError("Dropout and batchnorm not allowed at once")
         if len(kernel_sizes) != len(strides) or len(kernel_sizes) != len(filters_nums):
             raise ValueError()
         if len(fc_layers) == 0:
@@ -161,10 +208,10 @@ class CNN(_Model):
                          num_outputs=num_units,
                          scope="fc{}".format(i),
                          activation_fn=self.activation_fn)
-            if self.dropout > 0:
-                inputs = tf.nn.dropout(inputs, keep_prob)
             if self.batch_norm:
                 inputs = tf.layers.batch_normalization(inputs)
+            if self.dropout > 0:
+                inputs = tf.nn.dropout(inputs, keep_prob)
         return _fc(inputs, "fc_out", num_outputs=outputs_num, activation_fn=None)
 
 
