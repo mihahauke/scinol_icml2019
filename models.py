@@ -94,7 +94,6 @@ class NN(_Model):
 class CharLSTM(_Model):
     def __init__(self,
                  layers=(128, 128),
-                 fc_layers=(128),
                  rnn_class=tf.contrib.rnn.LSTMCell,
                  name=None,
                  dropout=0.0,
@@ -129,25 +128,8 @@ class CharLSTM(_Model):
                                                dtype=tf.float32,
                                                scope="rnn_unwind")
 
-        # multicell = tf.contrib.rnn.MultiRNNCell(cells, state_is_tuple=True)
-        # cell_wrapped = tf.contrib.rnn.OutputProjectionWrapper(multicell, output_size=234)
-        # cell_wrapped = cells[0]
-        # zero_state = cell_wrapped.zero_state()
-        # inputs = tf.transpose(inputs, perm=[1, 0, 2])
-
-        # outputs, states = tf.nn.dynamic_rnn(cell=cell_wrapped,
-        #                                     inputs=inputs,
-        #                                     time_major=True,
-        #                                     # initial_state = cell_wrapped.zero_state(batch_size=None,
-        #                                     #                                         dtype=tf.float32),
-        #                                     dtype=tf.float32)
-        # for var in tf.trainable_variables():
-        #     print(var.name, var.shape)
-        # exit(0)
-        # outputs = tf.reshape(outputs, [int(outputs.get_shape()[0]), int(inputs.get_shape()[1])])
-        fc = _fc(inputs, "fc_out", num_outputs=1, activation_fn=None)
-
-        return tf.layers.flatten(fc)
+        fc = _fc(inputs, "fc_out", num_outputs=outputs_num, activation_fn=None)
+        return fc
 
 
 class CNN(_Model):

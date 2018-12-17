@@ -46,11 +46,7 @@ def load_text(input_txt,
         print('  Test size: %d' % test_size)
 
     # Choose the datatype based on the vocabulary size
-    dtype = np.uint8
-    if len(token_to_idx) > 255:
-        dtype = np.uint32
-    if verbose:
-        print('Using dtype ', dtype)
+    dtype = np.uint32
 
     # Just load data into memory ... we'll have to do something more clever
     # for huge datasets but this should be fine for now

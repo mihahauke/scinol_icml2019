@@ -4,12 +4,12 @@ optimizers:
 #    - {beta: 1}
 #  scinol2:
 #  cocob:
-#  adam:
-  rmsprop:
-    - { learning_rate: 2e-3 }
+  adam:
+#  rmsprop:
+#    - { learning_rate: 2e-3 }
 models:
   CharLSTM:
-    - {layers: [32]}
+    - {layers: [128]}
 datasets:
   - WarAndPeace
 
@@ -18,5 +18,4 @@ epochs: 50
 times: 1
 train_histograms: False
 train_logs: False
-use_embeddings: True
 embedding_size: 64

@@ -73,22 +73,28 @@ class _Dataset():
                  num_outputs,
                  train_batchsize=None,
                  test_batchsize=None,
-                 one_hot=True,
+                 convert_labels_to_one_hot=True,
                  seed=None,
+                 sequential=False,
+                 use_embeddings=False,
                  **kwargs):
+        # TODO check if one hot coverter is ok for all datasets
         if num_outputs == 2:
-            one_hot = False
+            convert_labels_to_one_hot = False
             num_outputs = 1
-
+        self.sequential = sequential
+        self.use_embeddings = use_embeddings
         self._name = name
         self._input_shape = list(input_shape)
         self._outputs_num = num_outputs
         self.test = list(test_data)
         self.train = list(train_data)
 
-        self.one_hot = one_hot
+        self.one_hot_labels = convert_labels_to_one_hot
 
-        if self.one_hot:
+        if self.one_hot_labels:
+            if sequential:
+                raise NotImplementedError("Might now work correclty???")
             self.train[1] = _to_one_hot(self.train[1])
             self.test[1] = _to_one_hot(self.test[1])
         self.train_batchsize = train_batchsize
@@ -487,8 +493,6 @@ class _CharText(_Dataset):
                  **kwargs):
         self.maybe_download(link, download_dir)
         train, test, token_to_idx = load_text(file, test_frac=test_ratio)
-        # train = _to_one_hot(train)
-        # test = _to_one_hot(test)
         self.token_to_idx = token_to_idx
         self.idx_to_token = {v: k for k, v in token_to_idx.items()}
         self.tokens_num = len(token_to_idx)
@@ -498,15 +502,15 @@ class _CharText(_Dataset):
         y_train = train[1:].reshape((-1, seq_len))
         x_test = test[:-1].reshape((-1, seq_len))
         y_test = test[1:].reshape((-1, seq_len))
-        # y_train = _to_one_hot(y_train)
-        # y_test = _to_one_hot(y_test)
         super(_CharText, self).__init__(
             name=name,
             train_data=(x_train, y_train),
             test_data=(x_test, y_test),
             input_shape=[seq_len],
-            num_outputs=y_train.shape[1],
-            one_hot=False,
+            num_outputs=self.tokens_num,
+            convert_labels_to_one_hot=False,
+            sequential=True,
+            use_embeddings=True,
             **kwargs)
 
 

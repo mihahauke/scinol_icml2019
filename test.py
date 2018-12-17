@@ -16,7 +16,6 @@ DEFAULT_LOGDIR = None
 FLUSH_SECS = 2
 TESTBATCH_SIZE = 100000
 DEFAULT_EPOCHS = 30
-DEFAULT_ONE_HOT = True
 
 
 # TODO parsing a list is not needed anymore . .. i think
@@ -56,14 +55,12 @@ def test(
         optimizer_class,
         optimizer_args,
         epochs=DEFAULT_EPOCHS,
-        one_hot=DEFAULT_ONE_HOT,
         train_histograms=False,
         tag=None,
         train_logs=True,
         no_tqdm=False,
-        verbose=False,
-        use_embeddings=False,
         embedding_size=None,
+        verbose=False,
         *args,
         **kwargs):
     # TODO add tag support
@@ -77,39 +74,42 @@ def test(
                                                  None,
                                                  name='dropout_switch')
 
-    if use_embeddings:
+    if dataset.use_embeddings:
         x = tf.placeholder(tf.int32, [None] + dataset.input_shape, name='x-input')
         embeddings = tf.get_variable("embedding", [dataset.tokens_num, embedding_size],
                                      initializer=tf.random_normal_initializer, trainable=True)
-        model_input = tf.nn.embedding_lookup(embeddings,x)
+        model_input = tf.nn.embedding_lookup(embeddings, x)
     else:
         x = tf.placeholder(tf.float32, [None] + dataset.input_shape, name='x-input')
         model_input = x
     model = eval(model)(**model_args)
-    y = model(model_input, dataset.outputs_num, dropout_switch=dropout_switch)
+    logits = model(model_input, dataset.outputs_num, dropout_switch=dropout_switch)
 
-    # Y target ops
-    if dataset.outputs_num == 1:
-        y_target = tf.placeholder(tf.float32, [None], name='y-input')
-        flat_y = tf.reshape(y, [-1])
-        cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_target, logits=flat_y)
-        correct_predictions = tf.equal(tf.cast(tf.greater(flat_y, 0), tf.float32), y_target)
+    if dataset.sequential:
+        # fold batchsize with sequence len
+        seq_len = logits.shape[1]
+        logits_flat = tf.reshape(logits, [-1, logits.shape[2]])
+        target = tf.placeholder(tf.int64, [None, seq_len], name='y-input')
+        target_flat = tf.reshape(target,[-1])
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=target_flat, logits=logits_flat)
+        correct_predictions = tf.equal(tf.argmax(logits_flat, 1), target_flat)
     else:
-        if one_hot:
-            y_target = tf.placeholder(tf.float32, [None, dataset.outputs_num], name='y-input')
-            cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_target, logits=y)
-            correct_predictions = tf.equal(tf.argmax(y, 1), tf.argmax(y_target, 1))
+        # TODO chewck if changes work as expected
+        if dataset.outputs_num == 1:
+            target = tf.placeholder(tf.float32, [None], name='y-input')
+            flat_y = tf.reshape(logits, [-1])
+            cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=target, logits=flat_y)
+            correct_predictions = tf.equal(tf.cast(tf.greater(flat_y, 0), tf.float32), target)
         else:
-            y_target = tf.placeholder(tf.int64, [None], name='y-input')
-            cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y_target, logits=y)
-            correct_predictions = tf.equal(tf.argmax(y, 1), y_target)
+            target = tf.placeholder(tf.float32, [None, dataset.outputs_num], name='y-input')
+            cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=target, logits=y)
+            correct_predictions = tf.equal(tf.argmax(y, 1), tf.argmax(target, 1))
 
     mean_cross_entropy = tf.reduce_mean(cross_entropy)
     accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
 
     loss = mean_cross_entropy
     optimizer = eval(optimizer_class)(**optimizer_args)
-    inputs = {}
     # Why de faq get_variable doesnt allow NOT TO create a new one and returns error
     # de faq doesnt it work:
     # inputs = {tf.get_variable("fully_connected/weights"): x,
@@ -157,11 +157,11 @@ def test(
     sess.run(tf.global_variables_initializer())
     batches_processed = 0
     test_x, test_y = dataset.get_test_data()
-    test_summary = sess.run(test_summaries,
+    pre_run_test_summary = sess.run(test_summaries,
                             feed_dict={x: test_x,
-                                       y_target: test_y,
+                                       target: test_y,
                                        dropout_switch: 0})
-    test_writer.add_summary(test_summary, batches_processed)
+    test_writer.add_summary(pre_run_test_summary, batches_processed)
     if no_tqdm:
         def trange(n, *args, **kwargs):
             for epoch in range(n):
@@ -177,19 +177,19 @@ def test(
             if train_logs:
                 train_summary, _ = sess.run([train_summaries, train_step],
                                             feed_dict={x: bx,
-                                                       y_target: by,
+                                                       target: by,
                                                        dropout_switch: 1})
                 train_writer.add_summary(train_summary, batches_processed)
             else:
                 sess.run(train_step,
                          feed_dict={x: bx,
-                                    y_target: by,
+                                    target: by,
                                     dropout_switch: 1})
         # TODO change it to minibatches
         test_x, test_y = dataset.get_test_data()
         test_summary = sess.run(test_summaries,
                                 feed_dict={x: test_x,
-                                           y_target: test_y,
+                                           target: test_y,
                                            dropout_switch: 0})
         test_writer.add_summary(test_summary, batches_processed)
 
