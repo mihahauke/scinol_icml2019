@@ -91,7 +91,7 @@ if __name__ == '__main__':
     if args.output is None:
         pass
     else:
-        output_h5 = args.output_ + ".h5"
+        output_h5 = args.output + ".h5"
         output_json = args.output + ".json"
 
         with h5py.File(output_h5, 'w') as f:
