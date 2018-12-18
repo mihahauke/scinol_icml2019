@@ -142,7 +142,8 @@ class _ScinolBase(_BaseOptimizer):
             return 1
         else:
             if len(var.shape) == 2:
-                return (2 / (var.shape[0] + var.shape[1])) ** 0.5
+                fin, fout = var.get_shape().as_list()
+                return (2 / (fin+fout)) ** 0.5
             else:
                 NotImplementedError("Convolution and such stuff not supported")
 
@@ -307,7 +308,7 @@ class ScinolBOptimizer(ScinolOptimizer):
         """
 
     def __init__(self, epsilon=100, name="ScInOlA", *args, **kwargs):
-        super(ScinolAOptimizer, self).__init__(scale_epsilon=True, name=name, *args, **kwargs)
+        super(ScinolBOptimizer, self).__init__(scale_epsilon=True, name=name, *args, **kwargs)
 
     def _create_slots(self, var_list):
         for v in var_list:
@@ -325,8 +326,8 @@ class Scinol2BOptimizer(Scinol2Optimizer):
 
         """
 
-    def __init__(self, name="ScInOl2a", *args, **kwargs):
-        super(Scinol2AOptimizer, self).__init__(name=name, scale_epsilon=True, *args, **kwargs)
+    def __init__(self, name="ScInOl2b", *args, **kwargs):
+        super(Scinol2Optimizer, self).__init__(name=name, scale_epsilon=True, *args, **kwargs)
 
     def _create_slots(self, var_list):
         for v in var_list:

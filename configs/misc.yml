@@ -42,7 +42,7 @@ datasets:
 #  - PennShuttle
 
 train_batchsize: 256
-epochs: 5
+epochs: 20
 times: 1
 train_histograms: False
 train_logs: True
