@@ -102,8 +102,8 @@ def test(
             correct_predictions = tf.equal(tf.cast(tf.greater(flat_y, 0), tf.float32), target)
         else:
             target = tf.placeholder(tf.float32, [None, dataset.outputs_num], name='y-input')
-            cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=target, logits=y)
-            correct_predictions = tf.equal(tf.argmax(y, 1), tf.argmax(target, 1))
+            cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=target, logits=logits)
+            correct_predictions = tf.equal(tf.argmax(logits, 1), tf.argmax(target, 1))
 
     mean_cross_entropy = tf.reduce_mean(cross_entropy)
     accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))

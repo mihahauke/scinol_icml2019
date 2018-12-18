@@ -6,6 +6,10 @@ from cocob import COCOBOptimizer, COCOBOptimizer0
 nag = NAGOptimizer
 scinol = ScinolOptimizer
 scinol2 = Scinol2Optimizer
+scinola = ScinolAOptimizer
+scinol2a = Scinol2AOptimizer
+scinolb = ScinolBOptimizer
+scinol2b = Scinol2BOptimizer
 prescinol = PreScinolOptimizer
 prescinol2 = PreScinol2Optimizer
 prescinoldl = PreScinolDLOptimizer

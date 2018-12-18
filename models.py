@@ -1,4 +1,4 @@
-from tensorflow.contrib.layers import fully_connected
+from tensorflow.contrib.layers import fully_connected, conv2d
 
 import tensorflow as tf
 
@@ -23,13 +23,7 @@ def _fc(inputs, scope, *args, **kwargs):
 def _conv(inputs, scope, *args, **kwargs):
     inputs = tf.identity(inputs, name="{}/weights/input".format(scope))
 
-    return tf.layers.conv2d(
-        inputs,
-        name=scope,
-        *args,
-        **kwargs
-    )
-
+    return conv2d(inputs, scope=scope, *args, **kwargs)
 
 
 class LR(_Model):
@@ -168,7 +162,7 @@ class CNN(_Model):
             inputs = _conv(
                 inputs,
                 strides=stride,
-                filters=filters_num,
+                num_outputs=filters_num,
                 kernel_size=kernel_size,
                 scope="conv_{}".format(i),
                 data_format='channels_last',
