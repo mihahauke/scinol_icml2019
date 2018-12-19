@@ -9,7 +9,7 @@ from tensorflow.python.training import distribution_strategy_context
 from tensorflow.python.util import nest
 from tensorflow.python.training.optimizer import Optimizer
 
-SMALL_NUMBER = 1e-5
+SMALL_NUMBER = 1e-10
 DEFAULT_UNPUTS_SUFFIX = "input"
 
 
@@ -193,7 +193,7 @@ class ScinolOptimizer(_ScinolBase):
         if self.beta is not None:
             beta = tf.constant(float(self.beta))
         else:
-            beta = tf.assign(beta, tf.minimum(beta, self.get_epsilon(var) * (S2 + M ** 2) / (x2 * (t + 1))))
+            beta = tf.assign(beta, tf.minimum(beta, self.get_epsilon(var) * (S2 + M ** 2) / (x2 * t)))
 
         theta = G / (S2 + M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
@@ -275,7 +275,7 @@ class ScinolAOptimizer(ScinolOptimizer):
     def _create_slots(self, var_list):
         for v in var_list:
             with ops.colocate_with(v):
-                self._get_or_make_slot(v, self.s0 * v, "grads_sum", self._name)
+                self._get_or_make_slot(v, (self.s0) ** 0.5 * v, "grads_sum", self._name)
                 self.create_const_init_slot(v, "initial_var", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "var_max", SMALL_NUMBER)
@@ -294,7 +294,7 @@ class Scinol2AOptimizer(Scinol2Optimizer):
     def _create_slots(self, var_list):
         for v in var_list:
             with ops.colocate_with(v):
-                self._get_or_make_slot(v, self.s0 * v, "grads_sum", self._name)
+                self._get_or_make_slot(v, (self.s0) ** 0.5 * v, "grads_sum", self._name)
                 self.create_const_init_slot(v, "initial_var", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "var_max", SMALL_NUMBER)
@@ -302,14 +302,15 @@ class Scinol2AOptimizer(Scinol2Optimizer):
 
 
 class ScinolBOptimizer(ScinolOptimizer):
-    """Inicjalizacja zgodnie z dokumentem new_alg.tex, tzn. S_0 np. rzędu 100
-    i potem początkowy skumulowany gradient G_i ~ N(0, S_0/d), gdzie S_0/d jest *wariancją*, a d = (n_in + n_out) / 2. Wartość początkową eta ustawiamy na 1.
+    """Inicjalizacja podobnie jak w new_alg.tex, ale teraz S_0 = 1, G_i ~ N(0, 1),
+a cała skala siedzi w zmiennej początkowej epsilon. Tzn. trzeba dobrać epsilon = sqrt(2/(n_in + n_out)).
+
 
     Hacky: this assumes that weights are initialized with glorot so it initializes eta with V0 rather than ~ N(0, 1/d) (basically the same result)
         """
 
-    def __init__(self, name="ScInOlB", *args, **kwargs):
-        super(ScinolBOptimizer, self).__init__(scale_epsilon=True, name=name, *args, **kwargs)
+    def __init__(self, s0=1, name="ScInOlB", *args, **kwargs):
+        super(ScinolBOptimizer, self).__init__(s0=s0, scale_epsilon=True, name=name, *args, **kwargs)
 
     def _create_slots(self, var_list):
         for v in var_list:
@@ -327,8 +328,8 @@ class Scinol2BOptimizer(Scinol2Optimizer):
 
         """
 
-    def __init__(self, name="ScInOl2B", *args, **kwargs):
-        super(Scinol2Optimizer, self).__init__(name=name, scale_epsilon=True, *args, **kwargs)
+    def __init__(self, s0=1, name="ScInOl2B", *args, **kwargs):
+        super(Scinol2Optimizer, self).__init__(s0=s0, name=name, scale_epsilon=True, *args, **kwargs)
 
     def _create_slots(self, var_list):
         for v in var_list:

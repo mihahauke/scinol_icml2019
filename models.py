@@ -31,11 +31,12 @@ class LR(_Model):
                  name=None,
                  init0=False):
         if init0:
-            self.initializer = tf.initializers.zeros
+            self.initializer = tf.zeros_initializer()
             if name is None:
                 name = "lr0"
         else:
             # Glorot by default
+
             self.initializer = None
             if name is None:
                 name = "lr"
@@ -50,8 +51,8 @@ class LR(_Model):
                    scope="fc_lr",
                    num_outputs=outputs_num,
                    activation_fn=None,
-                   biases_initializer=tf.initializers.zeros,
-                   weights_initializer=tf.initializers.zeros)
+                   biases_initializer=self.initializer,
+                   weights_initializer=self.initializer)
 
 
 class NN(_Model):
