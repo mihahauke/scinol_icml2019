@@ -99,8 +99,8 @@ class _BaseOptimizer(Optimizer):
             self._assert_valid_dtypes([grad_loss])
         if var_list is None:
             var_list = (
-                variables.trainable_variables() +
-                ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+                    variables.trainable_variables() +
+                    ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
         else:
             var_list = nest.flatten(var_list)
         # pylint: disable=protected-access
@@ -143,7 +143,7 @@ class _ScinolBase(_BaseOptimizer):
         else:
             if len(var.shape) == 2:
                 fin, fout = var.get_shape().as_list()
-                return (2 / (fin+fout)) ** 0.5
+                return (2 / (fin + fout)) ** 0.5
             else:
                 NotImplementedError("Convolution and such stuff not supported")
 
@@ -288,7 +288,7 @@ class Scinol2AOptimizer(Scinol2Optimizer):
     Hacky: this assumes that weights are initialized with glorot so it initializes G_i with s_0*V0 rather than ~ N(0, S_0/d) (basically the same result)
         """
 
-    def __init__(self, s0=100, name="ScInOl2a", *args, **kwargs):
+    def __init__(self, s0=100, name="ScInOl2A", *args, **kwargs):
         super(Scinol2AOptimizer, self).__init__(s0=s0, name=name, *args, **kwargs)
 
     def _create_slots(self, var_list):
@@ -302,18 +302,19 @@ class Scinol2AOptimizer(Scinol2Optimizer):
 
 
 class ScinolBOptimizer(ScinolOptimizer):
-    """Inicjalizacja zgodnie z dokumentem new_alg.tex, tzn. S_0 np. rzędu 100 i potem początkowy skumulowany gradient G_i ~ N(0, S_0/d), gdzie S_0/d jest *wariancją*, a d = (n_in + n_out) / 2. Wartość początkową eta ustawiamy na 1.
+    """Inicjalizacja zgodnie z dokumentem new_alg.tex, tzn. S_0 np. rzędu 100
+    i potem początkowy skumulowany gradient G_i ~ N(0, S_0/d), gdzie S_0/d jest *wariancją*, a d = (n_in + n_out) / 2. Wartość początkową eta ustawiamy na 1.
 
     Hacky: this assumes that weights are initialized with glorot so it initializes eta with V0 rather than ~ N(0, 1/d) (basically the same result)
         """
 
-    def __init__(self, epsilon=100, name="ScInOlA", *args, **kwargs):
+    def __init__(self, name="ScInOlB", *args, **kwargs):
         super(ScinolBOptimizer, self).__init__(scale_epsilon=True, name=name, *args, **kwargs)
 
     def _create_slots(self, var_list):
         for v in var_list:
             with ops.colocate_with(v):
-                self.create_normal_init_slot(v, "grads_sum", self._name)
+                self.create_normal_init_slot(v, "grads_sum")
                 self.create_const_init_slot(v, "initial_var", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "var_max", SMALL_NUMBER)
@@ -326,13 +327,13 @@ class Scinol2BOptimizer(Scinol2Optimizer):
 
         """
 
-    def __init__(self, name="ScInOl2b", *args, **kwargs):
+    def __init__(self, name="ScInOl2B", *args, **kwargs):
         super(Scinol2Optimizer, self).__init__(name=name, scale_epsilon=True, *args, **kwargs)
 
     def _create_slots(self, var_list):
         for v in var_list:
             with ops.colocate_with(v):
-                self.create_normal_init_slot(v, "grads_sum", self._name)
+                self.create_normal_init_slot(v, "grads_sum")
                 self.create_const_init_slot(v, "initial_var", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "var_max", SMALL_NUMBER)
