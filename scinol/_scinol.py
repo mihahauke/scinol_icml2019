@@ -137,15 +137,14 @@ class _ScinolBase(_BaseOptimizer):
     def get_epsilon(self, var):
         if not self.scale_epsilon:
             return self.epsilon
-        # TODO Hacky hacky
-        if "bias" in var.name:
-            return 1
+        if len(var.shape) == 1:
+            return (1 / var.get_shape().as_list()[0]) ** 0.5
+        elif len(var.shape) == 2:
+            fin, fout = var.get_shape().as_list()
+            return (2 / (fin + fout)) ** 0.5
+
         else:
-            if len(var.shape) == 2:
-                fin, fout = var.get_shape().as_list()
-                return (2 / (fin + fout)) ** 0.5
-            else:
-                NotImplementedError("Convolution and such stuff not supported")
+            NotImplementedError("Convolution and such stuff not supported")
 
 
 class ScinolOptimizer(_ScinolBase):
