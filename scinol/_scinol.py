@@ -17,6 +17,7 @@ class _BaseOptimizer(Optimizer):
     def __init__(self, *args, **kwargs):
         super(_BaseOptimizer, self).__init__(*args, **kwargs)
         self.inputs = None
+        self.t = tf.train.get_or_create_global_step()
 
     def create_const_init_slot(self, v, name, value=0):
         initializer = tf.initializers.constant(value, dtype=v.dtype)
@@ -114,6 +115,8 @@ class _BaseOptimizer(Optimizer):
         self._create_slots(var_list)
 
         update_ops = [self._preapply_dense(var) for var in var_list]
+        t_op = tf.assign_add(self.t, 1)
+        update_ops.append(t_op)
         with tf.control_dependencies(update_ops):
             return super(_BaseOptimizer, self).compute_gradients(loss, var_list,
                                                                  gate_gradients,
@@ -125,17 +128,17 @@ class _BaseOptimizer(Optimizer):
 class _ScinolBase(_BaseOptimizer):
     def __init__(self,
                  epsilon=1.0,
-                 scale_epsilon=False,
+                 epsilon_scaled=False,
                  s0=0,
                  name=None,
                  use_locking=False):
         super(_ScinolBase, self).__init__(use_locking, name)
         self.epsilon = float(epsilon)
-        self.scale_epsilon = scale_epsilon
+        self.epsilon_scaled = epsilon_scaled
         self.s0 = s0
 
     def get_epsilon(self, var):
-        if not self.scale_epsilon:
+        if not self.epsilon_scaled:
             return self.epsilon
         if len(var.shape) == 1:
             return (1 / var.get_shape().as_list()[0]) ** 0.5
@@ -158,7 +161,6 @@ class ScinolOptimizer(_ScinolBase):
                  beta=None,
                  *args, **kwargs):
         super(ScinolOptimizer, self).__init__(name=name, *args, **kwargs)
-        self.t = tf.train.get_or_create_global_step()
         self.beta = beta
 
     def _create_slots(self, var_list):
@@ -186,13 +188,13 @@ class ScinolOptimizer(_ScinolBase):
         S2 = self.get_slot(var, "squared_grads_sum")
         M = self.get_slot(var, "var_max")
         var0 = self.get_slot(var, "initial_var")
-        t = tf.to_float(tf.assign_add(self.t, 1))
+        t = tf.to_float(self.t)
 
         M = tf.assign(M, tf.maximum(M, max_x))
         if self.beta is not None:
             beta = tf.constant(float(self.beta))
         else:
-            beta = tf.assign(beta, tf.minimum(beta, self.get_epsilon(var) * (S2 + M ** 2) / (x2 * t)))
+            beta = tf.assign(beta, tf.minimum(beta, self.get_epsilon(var) * (S2 + M ** 2) / (x2 * (t+1))))
 
         theta = G / (S2 + M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
@@ -309,7 +311,7 @@ a cała skala siedzi w zmiennej początkowej epsilon. Tzn. trzeba dobrać epsilo
         """
 
     def __init__(self, s0=1, name="ScInOlB", *args, **kwargs):
-        super(ScinolBOptimizer, self).__init__(s0=s0, scale_epsilon=True, name=name, *args, **kwargs)
+        super(ScinolBOptimizer, self).__init__(s0=s0, epsilon_scaled=True, name=name, *args, **kwargs)
 
     def _create_slots(self, var_list):
         for v in var_list:
@@ -328,7 +330,7 @@ class Scinol2BOptimizer(Scinol2Optimizer):
         """
 
     def __init__(self, s0=1, name="ScInOl2B", *args, **kwargs):
-        super(Scinol2Optimizer, self).__init__(s0=s0, name=name, scale_epsilon=True, *args, **kwargs)
+        super(Scinol2Optimizer, self).__init__(s0=s0, name=name, epsilon_scaled=True, *args, **kwargs)
 
     def _create_slots(self, var_list):
         for v in var_list:

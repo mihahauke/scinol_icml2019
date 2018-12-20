@@ -15,6 +15,7 @@ class PreScinolOptimizer(_BaseOptimizer):
     def __init__(self,
                  alpha=1.125,
                  epsilon=1,
+                 epsilon_scaled=False,
                  s0=0,
                  name="PreScinol",
                  use_locking=False):
@@ -22,6 +23,7 @@ class PreScinolOptimizer(_BaseOptimizer):
         self.alpha = alpha
         self.epsilon = epsilon
         self.s0 = s0
+        self.epsilon_scaled = epsilon_scaled
 
     def _create_slots(self, var_list):
         for v in var_list:
@@ -31,13 +33,25 @@ class PreScinolOptimizer(_BaseOptimizer):
                 # self._get_or_make_slot(v, v, "initial_var", self._name)
 
     def _preapply_dense(self, var):
-        x2 = tf.reduce_mean(var ** 2, 0)
+        x = self.inputs[var]
+        if x.shape == []:
+            x2 = x ** 2
+        else:
+            x = tf.expand_dims(x, len(x.shape))
+            x2 = tf.reduce_mean(x ** 2, 0)
+            x2 = tf.broadcast_to(x2, var.get_shape())
+
         h = self.get_slot(var, "grads_sum")
         s2 = self.get_slot(var, "squared_grads_sum")
 
         broadcasted_x2 = tf.broadcast_to(x2, s2.shape)
         s2 = tf.assign_add(s2, broadcasted_x2)
-        new_var = self.epsilon * h / (self.alpha * s2) * tf.exp((h ** 2 + x2) / (2 * self.alpha * s2))
+
+        if self.epsilon_scaled:
+            epsilon = self.epsilon / tf.to_float(self.t)
+        else:
+            epsilon = self.epsilon
+        new_var = epsilon * h / (self.alpha * s2) * tf.exp((h ** 2 + x2) / (2 * self.alpha * s2))
 
         # equivalent new_var[s2==0] = 0
         new_var = tf.where(tf.not_equal(s2, 0), new_var, tf.zeros_like(new_var))
@@ -45,7 +59,6 @@ class PreScinolOptimizer(_BaseOptimizer):
 
     def _apply_dense(self, grad, var):
         h = self.get_slot(var, "grads_sum")
-
         new_h = tf.assign_add(h, -grad)
         return new_h
 
@@ -75,7 +88,14 @@ class PreScinol2Optimizer(_BaseOptimizer):
                 self.create_const_init_slot(v, "eta", self.epsilon)
 
     def _preapply_dense(self, var):
-        x2 = tf.reduce_mean(var ** 2, 0)
+        x = self.inputs[var]
+        if x.shape == []:
+            x2 = x ** 2
+        else:
+            x = tf.expand_dims(x, len(x.shape))
+            x2 = tf.reduce_mean(x ** 2, 0)
+            x2 = tf.broadcast_to(x2, var.get_shape())
+
         h = self.get_slot(var, "grads_sum")
         s2 = self.get_slot(var, "squared_grads_sum")
         eta = self.get_slot(var, "eta")
