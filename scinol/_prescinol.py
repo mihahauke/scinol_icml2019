@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 from ._scinol import _BaseOptimizer
 
-SMALL_NUMBER = 1e-5
+SMALL_NUMBER = 1e-10
 DEFAULT_UNPUTS_SUFFIX = "input"
 
 
@@ -30,7 +30,7 @@ class PreScinolOptimizer(_BaseOptimizer):
             with ops.colocate_with(v):
                 self.create_const_init_slot(v, "grads_sum", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
-                # self._get_or_make_slot(v, v, "initial_var", self._name)
+                self._get_or_make_slot(v, v, "initial_value", self._name)
 
     def _preapply_dense(self, var):
         x = self.inputs[var]
@@ -43,7 +43,8 @@ class PreScinolOptimizer(_BaseOptimizer):
 
         h = self.get_slot(var, "grads_sum")
         s2 = self.get_slot(var, "squared_grads_sum")
-
+        var0 = self.get_slot(var, "initial_value")
+        
         broadcasted_x2 = tf.broadcast_to(x2, s2.shape)
         s2 = tf.assign_add(s2, broadcasted_x2)
 
@@ -137,12 +138,12 @@ class PreScinolDLOptimizer(_BaseOptimizer):
             with ops.colocate_with(v):
                 self.create_const_init_slot(v, "grads_sum", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
-                self._get_or_make_slot(v, v, "initial_var", self._name)
+                self._get_or_make_slot(v, v, "initial_value", self._name)
 
     def _apply_dense(self, grad, var):
         h = self.get_slot(var, "grads_sum")
         s2 = self.get_slot(var, "squared_grads_sum")
-        var0 = self.get_slot(var, "initial_var")
+        var0 = self.get_slot(var, "initial_value")
 
         new_h = tf.assign_add(h, -grad)
         new_s2 = tf.assign_add(s2, grad ** 2)
@@ -171,13 +172,13 @@ class PreScinol2DLOptimizer(_BaseOptimizer):
                 self.create_const_init_slot(v, "grads_sum", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "eta", self.epsilon)
-                self._get_or_make_slot(v, v, "initial_var", self._name)
+                self._get_or_make_slot(v, v, "initial_value", self._name)
 
     def _apply_dense(self, grad, var):
         h = self.get_slot(var, "grads_sum")
         s2 = self.get_slot(var, "squared_grads_sum")
         eta = self.get_slot(var, "eta")
-        var0 = self.get_slot(var, "initial_var")
+        var0 = self.get_slot(var, "initial_value")
 
         new_h = tf.assign_add(h, -grad)
         new_s2 = tf.assign_add(s2, grad ** 2)
