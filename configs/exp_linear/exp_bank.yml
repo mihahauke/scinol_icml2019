@@ -1,4 +1,7 @@
 optimizers:
+  scinol:
+  scinol2:
+  cocob:
   prescinol:
   prescinol2:
   adam:
@@ -14,12 +17,12 @@ optimizers:
     - {learning_rate: 0.001 }
     - {learning_rate: 0.0001 }
   sgd:
-    - {learning_rate: 1.0, decay: "sqrt" }
-    - {learning_rate: 0.1, decay: "sqrt" }
-    - {learning_rate: 0.01, decay: "sqrt" }
-    - {learning_rate: 0.001, decay: "sqrt" }
-    - {learning_rate: 0.0001, decay: "sqrt" }
-    - {learning_rate: 0.00001, decay: "sqrt" }
+    - {learning_rate: 1.0 }
+    - {learning_rate: 0.1 }
+    - {learning_rate: 0.01 }
+    - {learning_rate: 0.001 }
+    - {learning_rate: 0.0001 }
+    - {learning_rate: 0.00001 }
   nag:
     - {learning_rate: 1.0 }
     - {learning_rate: 0.1 }
@@ -31,13 +34,13 @@ models:
   LR:
     - {init0: True}
 
-datasets:
-  - UCI_Madelon
 
+datasets:
+  - UCI_Bank
 
 
 train_batchsize: 1
-epochs: 60
+epochs: 10
 times: 1
 train_histograms: False
 train_logs: False
