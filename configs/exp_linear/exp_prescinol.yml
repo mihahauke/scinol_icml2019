@@ -27,8 +27,9 @@ datasets:
 
 
 train_batchsize: 1
-epochs: 10
+epochs: 30
 times: 1
 train_histograms: False
 train_logs: False
 no_tqdm: True
+tblogdir: tb_logs_linear

@@ -55,13 +55,13 @@ def _parse_name(name, args):
 
 
 def test(
-        tblogdir,
-        logdir,
         dataset,
         model,
         model_args,
         optimizer_class,
         optimizer_args,
+        tblogdir=DEFAULT_TB_LOGDIR,
+        logdir=DEFAULT_LOGDIR,
         epochs=DEFAULT_EPOCHS,
         train_histograms=False,
         tag=None,
@@ -213,18 +213,6 @@ if __name__ == '__main__':
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument(
-            "--tblogdir",
-            "-tbl",
-            type=str,
-            default=DEFAULT_TB_LOGDIR,
-            help="TB Summaries log directory")
-        parser.add_argument(
-            "--logdir",
-            "-l",
-            type=str,
-            default=DEFAULT_LOGDIR,
-            help="Ordinary logs directory (NOT IMPLEMENTED")
-        parser.add_argument(
             "--verbose",
             "-v",
             action="store_true",
@@ -254,8 +242,6 @@ if __name__ == '__main__':
         )
 
         args = parser.parse_args()
-        if args.logdir is not None:
-            raise NotImplementedError("logdir ...")
 
         if args.tag is not None:
             raise NotImplementedError("tag ...")
@@ -331,8 +317,6 @@ if __name__ == '__main__':
                     for _ in range(config["times"]):
                         try:
                             test(
-                                args.tblogdir,
-                                args.logdir,
                                 dataset=dataset,
                                 model=model,
                                 model_args=model_args,

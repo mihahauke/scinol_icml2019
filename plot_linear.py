@@ -404,7 +404,7 @@ if __name__ == "__main__":
                         dest="output_dir",
                         default="graphs")
     parser.add_argument("--log_dir",
-                        default="tb_logs")
+                        default="tb_logs_linear")
     parser.add_argument("--extension", "-e",
                         default="png")
     parser.add_argument("--verbose", "-v",
@@ -562,7 +562,7 @@ if __name__ == "__main__":
                       tag_sets=tag_set,
                       y_axis="cross entropy",
                       title=titles_dict[d],
-                      line=np.log(classes[d])
+                      line=None
                       )
         path = os.path.join(args.output_dir, d)
         if args.log_scale:
