@@ -188,13 +188,13 @@ class ScinolOptimizer(_ScinolBase):
         S2 = self.get_slot(var, "squared_grads_sum")
         M = self.get_slot(var, "max")
         var0 = self.get_slot(var, "initial_value")
-        t = tf.to_float(self.t)
+        t = tf.to_float(self.t) +1
 
         M = tf.assign(M, tf.maximum(M, max_x))
         if self.beta is not None:
             beta = tf.constant(float(self.beta))
         else:
-            beta = tf.assign(beta, tf.minimum(beta, self.get_epsilon(var) * (S2 + M ** 2) / (x2 * (t+1))))
+            beta = tf.assign(beta, tf.minimum(beta, self.get_epsilon(var) * (S2 + M ** 2) / (x2 * t)))
 
         theta = G / (S2 + M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)

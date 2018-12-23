@@ -46,6 +46,14 @@ def _parse_list_dict(list_or_dict):
         raise ValueError("no list/dict")
 
 
+def _parse_name(name, args):
+    s = name
+    if len(args) > 0:
+        s += str(args)
+
+    return s
+
+
 def test(
         tblogdir,
         logdir,
@@ -90,7 +98,7 @@ def test(
         seq_len = logits.shape[1]
         logits_flat = tf.reshape(logits, [-1, logits.shape[2]])
         target = tf.placeholder(tf.int64, [None, seq_len], name='y-input')
-        target_flat = tf.reshape(target,[-1])
+        target_flat = tf.reshape(target, [-1])
         cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=target_flat, logits=logits_flat)
         correct_predictions = tf.equal(tf.argmax(logits_flat, 1), target_flat)
     else:
@@ -158,9 +166,9 @@ def test(
     batches_processed = 0
     test_x, test_y = dataset.get_test_data()
     pre_run_test_summary = sess.run(test_summaries,
-                            feed_dict={x: test_x,
-                                       target: test_y,
-                                       dropout_switch: 0})
+                                    feed_dict={x: test_x,
+                                               target: test_y,
+                                               dropout_switch: 0})
     test_writer.add_summary(pre_run_test_summary, batches_processed)
     if no_tqdm:
         def trange(n, *args, **kwargs):
@@ -317,7 +325,8 @@ if __name__ == '__main__':
         for dataset_name in datasets:
             dataset = eval(dataset_name)(**config)
             for model, model_args in models:
-                print("Running optimizers for dataset: '{}', model: '{}'".format(dataset.get_name(), model))
+                print("Running optimizers for dataset: '{}', model: '{}'".format(dataset.get_name(),
+                                                                                 _parse_name(model, model_args)))
                 for optimizer_class, optimizer_args in sorted(optimizers, key=lambda x: x[0]):
                     for _ in range(config["times"]):
                         try:
@@ -333,8 +342,8 @@ if __name__ == '__main__':
                                 verbose=args.verbose,
                                 **config)
                         except Exception as ex:
-                            print("=============== EXCEPTION ===============")
-                            print("=============== {} ===============".format(optimizer_class))
+                            print("======================= EXCEPTION ===================================")
+                            print("========================== {} =======================================".format(optimizer_class))
                             print(ex)
                             traceback.print_exc(file=sys.stdout)
                             print("==========================================")

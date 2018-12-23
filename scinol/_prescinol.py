@@ -14,7 +14,7 @@ class PreScinolOptimizer(_BaseOptimizer):
 
     def __init__(self,
                  alpha=1.125,
-                 epsilon=1,
+                 epsilon=1.0,
                  epsilon_scaled=False,
                  s0=0,
                  name="PreScinol",
@@ -23,6 +23,8 @@ class PreScinolOptimizer(_BaseOptimizer):
         self.alpha = alpha
         self.epsilon = epsilon
         self.s0 = s0
+        if epsilon_scaled not in [False,"d","dt"]:
+            raise ValueError("Improper epsilon scaled: {}".format(epsilon_scaled))
         self.epsilon_scaled = epsilon_scaled
 
     def _create_slots(self, var_list):
@@ -43,13 +45,16 @@ class PreScinolOptimizer(_BaseOptimizer):
 
         h = self.get_slot(var, "grads_sum")
         s2 = self.get_slot(var, "squared_grads_sum")
-        var0 = self.get_slot(var, "initial_value")
-        
+
         broadcasted_x2 = tf.broadcast_to(x2, s2.shape)
         s2 = tf.assign_add(s2, broadcasted_x2)
-
-        if self.epsilon_scaled:
-            epsilon = self.epsilon / tf.to_float(self.t)
+        t = self.t +1
+        if self.epsilon_scaled == "d":
+            d = float(var.get_shape().as_list()[0])
+            epsilon = self.epsilon / d
+        elif self.epsilon_scaled == "dt":
+            d = float(var.get_shape().as_list()[0])
+            epsilon = self.epsilon / (tf.to_float(t)*d)
         else:
             epsilon = self.epsilon
         new_var = epsilon * h / (self.alpha * s2) * tf.exp((h ** 2 + x2) / (2 * self.alpha * s2))
