@@ -98,3 +98,4 @@ times: 1
 train_histograms: False
 train_logs: False
 no_tqdm: True
+tblogdir: tb_logs_linear_b128
