@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+set -x
 ACTUAL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd ${ACTUAL_DIR}/..
 

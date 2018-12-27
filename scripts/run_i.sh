@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-#ACTUAL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/..
-#cd ${ACTUAL_DIR}
-cd /home/mkempka/optimizers
+ROOT_DIR="/home/mkempka/optimizers"
+cd ${ROOT_DIR}
 
 NAME="optim_`hostname`"
 IMAGE_TAG="optim"
@@ -12,7 +11,7 @@ nvidia-docker run \
        --net=host \
        -it \
        --name ${NAME} \
-       -v ${ACTUAL_DIR}:/home/optimizers \
+       -v ${ROOT_DIR}:/home/optimizers \
        --rm\
        --entrypoint /bin/bash \
         ${IMAGE_TAG}
