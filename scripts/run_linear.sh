@@ -5,14 +5,14 @@ ACTUAL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd ${ACTUAL_DIR}/..
 
 # Don't add parentheses, '~' in there won't be resolved correctly
-docker_script=~/optimizers/docker/build_n_run.sh
+docker_script=~/optimizers/scripts/docker_build_n_run.sh
 configs_dir="configs/exp_linear"
 
-./docker/slurm.sh "mnist" ${docker_script} ./test.py -c ${configs_dir}/exp_mnist.yml
-./docker/slurm.sh "bank" ${docker_script} ./test.py -c ${configs_dir}/exp_bank.yml
-./docker/slurm.sh "census" ${docker_script} ./test.py -c ${configs_dir}/exp_census.yml
-./docker/slurm.sh "covtype" ${docker_script} ./test.py -c ${configs_dir}/exp_covtype.yml
-./docker/slurm.sh "madelon" ${docker_script} ./test.py -c ${configs_dir}/exp_madelon.yml
-./docker/slurm.sh "shuttle" ${docker_script} ./test.py -c ${configs_dir}/exp_shuttle.yml
+./scripts/slurm_sbatch.sh "mnist" ${docker_script} ./test.py -c ${configs_dir}/exp_mnist.yml
+./scripts/slurm_sbatch.sh "bank" ${docker_script} ./test.py -c ${configs_dir}/exp_bank.yml
+./scripts/slurm_sbatch.sh "census" ${docker_script} ./test.py -c ${configs_dir}/exp_census.yml
+./scripts/slurm_sbatch.sh "covtype" ${docker_script} ./test.py -c ${configs_dir}/exp_covtype.yml
+./scripts/slurm_sbatch.sh "madelon" ${docker_script} ./test.py -c ${configs_dir}/exp_madelon.yml
+./scripts/slurm_sbatch.sh "shuttle" ${docker_script} ./test.py -c ${configs_dir}/exp_shuttle.yml
 
 

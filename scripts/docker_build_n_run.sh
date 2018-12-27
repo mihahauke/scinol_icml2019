@@ -5,4 +5,4 @@ cd ${ROOT_DIR}
 
 IMAGE_TAG="optim"
 docker build -t ${IMAGE_TAG} .
-./scripts/run.sh  "$@"
+./scripts/docker_run.sh  "$@"
