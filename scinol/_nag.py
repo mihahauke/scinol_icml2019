@@ -29,13 +29,15 @@ class NAGOptimizer(_BaseOptimizer):
         x = self.inputs[var]
         if x.shape == []:
             x2 = x ** 2
+            max_x = tf.abs(x)
         else:
             x = tf.expand_dims(x, len(x.shape))
             x2 = tf.reduce_mean(x ** 2, 0)
             x2 = tf.broadcast_to(x2, var.get_shape())
+            max_x = tf.reduce_max(tf.abs(x), 0)
 
         s = self.get_slot(var, "s")
-        new_s = tf.assign(s, tf.maximum(s, tf.abs(x)))
+        new_s = tf.assign(s, tf.maximum(s, max_x))
         new_var = tf.assign(var, var * (s / new_s))
         new_N = tf.assign_add(self.N, tf.reduce_sum(x2 / new_s ** 2))
 
