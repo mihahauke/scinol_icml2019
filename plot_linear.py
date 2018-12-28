@@ -164,9 +164,10 @@ class Tree(object):
 
             data = [steps[1:], entropy[1:]]
             if dataset == "UCI_Madelon":
-                data = [steps[0:30], entropy[0:30]]
+                data = [steps, entropy]
 
             self._add_leaf(tokens_list, data)
+
 
         self._convert_lists_to_arrays()
         self._index()
@@ -289,6 +290,7 @@ def plot_with_std(tree,
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning)
+        warnings.filterwarnings("ignore", category=FutureWarning)
         ax = None
         for di in range(data.shape[2]):
             sn = short_names[di]
@@ -383,7 +385,7 @@ def plot_with_std_v2(tree,
     plt.xlabel(x_axis_label)
 
 
-def save_plot(path, extension="pdf", logscale=False):
+def save_plot(path, extension="pdf", logscale=False, verbose=False):
     if not extension.startswith("."):
         extension = "." + extension
     if not path.endswith(extension):
@@ -392,6 +394,8 @@ def save_plot(path, extension="pdf", logscale=False):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if not logscale:
         plt.locator_params(nbins=6)
+    if verbose:
+        print("Saving {}".format(path))
     plt.savefig(path)
     plt.clf()
 
@@ -402,7 +406,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-o", "--output-dir",
                         dest="output_dir",
-                        default="graphs")
+                        default="graphs_linear")
     parser.add_argument("--log_dir",
                         default="tb_logs_linear")
     parser.add_argument("--extension", "-e",
@@ -410,6 +414,8 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", "-v",
                         action="store_true",
                         default=False)
+    parser.add_argument("--list", action="store_true")
+
     parser.add_argument("--show", "-s", default=False, action="store_true")
 
     parser.add_argument("--log-scale", "-l", default=False, action="store_true")
@@ -457,17 +463,18 @@ if __name__ == "__main__":
             plt.xlabel("# iterations")
 
 
+    print("Plotting artificial experiment...")
     plot()
     plt.yscale("log")
     plt.title("Artificial data")
     path = os.path.join(args.output_dir, "artificial")
-    save_plot(path, extension=args.extension, logscale=True)
+    save_plot(path, extension=args.extension, logscale=True, verbose=args.verbose)
 
     plot()
     plt.title("Artificial data (zoom)")
     plt.ylim(BEST_ENTROPY, START_ENTROPY)
     path = os.path.join(args.output_dir, "artificial_zoom")
-    save_plot(path, extension=args.extension)
+    save_plot(path, extension=args.extension, verbose=args.verbose)
 
     tree = Tree(verbose=args.verbose)
 
@@ -475,6 +482,9 @@ if __name__ == "__main__":
     excludes = []
     tree.load(args.log_dir, filters, excludes)
 
+    if args.list:
+        tree.print()
+        exit(0)
     all_keys = list(tree.random_access_data.keys())
 
     # Plots everything separately
@@ -488,7 +498,7 @@ if __name__ == "__main__":
                               y_axis="cross entropy",
                               title="{}: {}".format(dataset, algo),
                               err_style="unit_traces",
-                              line=np.log(classes[dataset])
+
                               )
                 path = os.path.join(args.output_dir, dataset, algo)
                 if args.log_scale:
