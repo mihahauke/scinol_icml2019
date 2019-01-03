@@ -8,11 +8,11 @@ cd ${ACTUAL_DIR}/..
 docker_script=~/optimizers/scripts/docker_build_n_run.sh
 configs_dir="configs/exp_linear"
 
-./scripts/slurm_sbatch.sh "mnist" ${docker_script} ./test.py -c ${configs_dir}/exp_mnist.yml
-./scripts/slurm_sbatch.sh "bank" ${docker_script} ./test.py -c ${configs_dir}/exp_bank.yml
-./scripts/slurm_sbatch.sh "census" ${docker_script} ./test.py -c ${configs_dir}/exp_census.yml
-./scripts/slurm_sbatch.sh "covtype" ${docker_script} ./test.py -c ${configs_dir}/exp_covtype.yml
-./scripts/slurm_sbatch.sh "madelon" ${docker_script} ./test.py -c ${configs_dir}/exp_madelon.yml
-./scripts/slurm_sbatch.sh "shuttle" ${docker_script} ./test.py -c ${configs_dir}/exp_shuttle.yml
+./scripts/slurm_sbatch.sh "mnist" ${docker_script} ./test.py -c ${configs_dir}/mnist.yml
+./scripts/slurm_sbatch.sh "bank" ${docker_script} ./test.py -c ${configs_dir}/bank.yml
+./scripts/slurm_sbatch.sh "census" ${docker_script} ./test.py -c ${configs_dir}/census.yml
+./scripts/slurm_sbatch.sh "covtype" ${docker_script} ./test.py -c ${configs_dir}/covtype.yml
+./scripts/slurm_sbatch.sh "madelon" ${docker_script} ./test.py -c ${configs_dir}/madelon.yml
+./scripts/slurm_sbatch.sh "shuttle" ${docker_script} ./test.py -c ${configs_dir}/shuttle.yml
 
 
