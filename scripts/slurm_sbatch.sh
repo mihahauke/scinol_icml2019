@@ -8,7 +8,7 @@ SCRIPT="$2"
 ARGS="${@:3}"
 
 LOGDIR="/home/mkempka/slurm_logs"
-LOGFILE=${LOGDIR}/`date +"%m_%d_%H_%M_%S"`_`hostname`_${TAG}.log
+LOGFILE=${LOGDIR}/`date +"%m_%d_%H_%M_%S"`_${TAG}.log
 
 sbatch  -J ${TAG} \
 	-p lab-ci \
