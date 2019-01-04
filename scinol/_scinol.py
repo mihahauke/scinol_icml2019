@@ -31,8 +31,6 @@ class _BaseOptimizer(Optimizer):
         self._get_or_make_slot_with_initializer(
             v, initializer, v.shape, v.dtype, name, self._name)
 
-
-
     def _retrieve_inputs(self, var_list):
 
         self.inputs = {}
@@ -139,14 +137,29 @@ class _ScinolBase(_BaseOptimizer):
         self.epsilon_scaled = epsilon_scaled
         self.s0 = s0
 
-    def get_epsilon(self, var):
+    def setup_epsilon_slot(self, var, name):
         if not self.epsilon_scaled:
-            return self.epsilon
+            self.create_const_init_slot(var, name, self.epsilon)
         if len(var.shape) == 1:
-            return (1 / var.get_shape().as_list()[0]) ** 0.5
-        elif len(var.shape) == 2:
-            init_value  = tf.initializers.glorot_normal(var.shape,var.dtype)
-            return tf.Variable(init_value, dtype=var.dtype)
+            value = (1 / var.get_shape().as_list()[0]) ** 0.5
+            self.create_const_init_slot(var, name, value)
+        else:
+            initializer = tf.initializers.glorot_normal(dtype=var.dtype)
+
+            self._get_or_make_slot_with_initializer(
+                var, initializer, var.shape, var.dtype, name, self._name)
+
+    def _process_inputs(self, var):
+        x = self.inputs[var]
+        if x.shape == []:
+            max_x = tf.abs(x)
+            x2 = x ** 2
+        else:
+            x = tf.expand_dims(x, len(x.shape))
+            x2 = tf.reduce_mean(x ** 2, 0)
+            max_x = tf.reduce_max(tf.abs(x), 0)
+            x2 = tf.broadcast_to(x2, var.get_shape())
+        return x, x2, max_x
 
 
 class ScinolOptimizer(_ScinolBase):
@@ -169,25 +182,10 @@ class ScinolOptimizer(_ScinolBase):
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self._get_or_make_slot(v, v, "initial_value", self._name)
                 self.create_const_init_slot(v, "max", SMALL_NUMBER)
-                self.create_const_init_slot(v, "beta", self.get_epsilon(v))
-
-    def _process_inputs(self, var):
-        x = self.inputs[var]
-        if x.shape == []:
-            max_x = tf.abs(x)
-            x2 = x ** 2
-        else:
-            x = tf.expand_dims(x, len(x.shape))
-            x2 = tf.reduce_mean(x ** 2, 0)
-            max_x = tf.reduce_max(tf.abs(x), 0)
-            x2 = tf.broadcast_to(x2, var.get_shape())
-        return x, x2, max_x
+                self.setup_epsilon_slot(v, "beta")
+                self.setup_epsilon_slot(v, "epsilon")
 
     def _preapply_dense(self, var):
-        x = self.inputs[var]
-        print(var)
-        print(x)
-        exit(0)
         _, x2, max_x = self._process_inputs(var)
 
         beta = self.get_slot(var, "beta")
@@ -195,13 +193,14 @@ class ScinolOptimizer(_ScinolBase):
         S2 = self.get_slot(var, "squared_grads_sum")
         M = self.get_slot(var, "max")
         var0 = self.get_slot(var, "initial_value")
+        epsilon = self.get_slot(var, "epsilon")
         t = tf.to_float(self.t) + 1
 
         M = tf.assign(M, tf.maximum(M, max_x))
         if self.beta is not None:
             beta = tf.constant(float(self.beta))
         else:
-            beta = tf.assign(beta, tf.minimum(beta, self.get_epsilon(var) * (S2 + M ** 2) / (x2 * t)))
+            beta = tf.assign(beta, tf.minimum(beta, epsilon * (S2 + M ** 2) / (x2 * t)))
 
         theta = G / (S2 + M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
@@ -236,7 +235,7 @@ class Scinol2Optimizer(_ScinolBase):
                 self._get_or_make_slot(v, v, "initial_value", self._name)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "max", SMALL_NUMBER)
-                self.create_const_init_slot(v, "eta", self.get_epsilon(v))
+                self.setup_epsilon_slot(v, "eta")
 
     def _preapply_dense(self, var):
         x, _, max_x = self._process_inputs(var)
@@ -281,7 +280,7 @@ class ScinolAOptimizer(ScinolOptimizer):
                 self.create_const_init_slot(v, "initial_value", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "max", SMALL_NUMBER)
-                self.create_const_init_slot(v, "beta", self.get_epsilon(v))
+                self.setup_epsilon_slot(v, "beta")
 
 
 class Scinol2AOptimizer(Scinol2Optimizer):
@@ -300,7 +299,7 @@ class Scinol2AOptimizer(Scinol2Optimizer):
                 self.create_const_init_slot(v, "initial_value", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "max", SMALL_NUMBER)
-                self.create_const_init_slot(v, "eta", self.get_epsilon(v))
+                self.setup_epsilon_slot(v, "eta")
 
 
 class ScinolBOptimizer(ScinolOptimizer):
@@ -321,7 +320,7 @@ a cała skala siedzi w zmiennej początkowej epsilon. Tzn. trzeba dobrać epsilo
                 self.create_const_init_slot(v, "initial_value", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "max", SMALL_NUMBER)
-                self.create_const_init_slot(v, "beta", self.get_epsilon(v))
+                self.setup_epsilon_slot(v, "beta")
 
 
 class Scinol2BOptimizer(Scinol2Optimizer):
@@ -340,4 +339,4 @@ class Scinol2BOptimizer(Scinol2Optimizer):
                 self.create_const_init_slot(v, "initial_value", 0)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "max", SMALL_NUMBER)
-                self.create_const_init_slot(v, "eta", self.get_epsilon(v))
+                self.setup_epsilon_slot(v, "eta")
