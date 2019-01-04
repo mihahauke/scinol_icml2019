@@ -1,3 +1,8 @@
 #!/usr/bin/env bash
 
-tensorboard --logdir=tb_logs
+LOGDIR="tb_logs"
+if [ $# -eq 1 ]
+  then
+    LOGDIR=$1
+fi
+tensorboard --logdir=${LOGDIR}

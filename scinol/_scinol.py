@@ -31,6 +31,8 @@ class _BaseOptimizer(Optimizer):
         self._get_or_make_slot_with_initializer(
             v, initializer, v.shape, v.dtype, name, self._name)
 
+
+
     def _retrieve_inputs(self, var_list):
 
         self.inputs = {}
@@ -100,8 +102,8 @@ class _BaseOptimizer(Optimizer):
             self._assert_valid_dtypes([grad_loss])
         if var_list is None:
             var_list = (
-                    variables.trainable_variables() +
-                    ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+                variables.trainable_variables() +
+                ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
         else:
             var_list = nest.flatten(var_list)
         # pylint: disable=protected-access
@@ -143,11 +145,8 @@ class _ScinolBase(_BaseOptimizer):
         if len(var.shape) == 1:
             return (1 / var.get_shape().as_list()[0]) ** 0.5
         elif len(var.shape) == 2:
-            fin, fout = var.get_shape().as_list()
-            return (2 / (fin + fout)) ** 0.5
-
-        else:
-            NotImplementedError("Convolution and such stuff not supported")
+            init_value  = tf.initializers.glorot_normal(var.shape,var.dtype)
+            return tf.Variable(init_value, dtype=var.dtype)
 
 
 class ScinolOptimizer(_ScinolBase):
@@ -172,7 +171,7 @@ class ScinolOptimizer(_ScinolBase):
                 self.create_const_init_slot(v, "max", SMALL_NUMBER)
                 self.create_const_init_slot(v, "beta", self.get_epsilon(v))
 
-    def _preapply_dense(self, var):
+    def _process_inputs(self, var):
         x = self.inputs[var]
         if x.shape == []:
             max_x = tf.abs(x)
@@ -182,13 +181,21 @@ class ScinolOptimizer(_ScinolBase):
             x2 = tf.reduce_mean(x ** 2, 0)
             max_x = tf.reduce_max(tf.abs(x), 0)
             x2 = tf.broadcast_to(x2, var.get_shape())
+        return x, x2, max_x
+
+    def _preapply_dense(self, var):
+        x = self.inputs[var]
+        print(var)
+        print(x)
+        exit(0)
+        _, x2, max_x = self._process_inputs(var)
 
         beta = self.get_slot(var, "beta")
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
         M = self.get_slot(var, "max")
         var0 = self.get_slot(var, "initial_value")
-        t = tf.to_float(self.t) +1
+        t = tf.to_float(self.t) + 1
 
         M = tf.assign(M, tf.maximum(M, max_x))
         if self.beta is not None:
@@ -232,13 +239,7 @@ class Scinol2Optimizer(_ScinolBase):
                 self.create_const_init_slot(v, "eta", self.get_epsilon(v))
 
     def _preapply_dense(self, var):
-        x = self.inputs[var]
-        if x.shape == []:
-            max_x = tf.abs(x)
-        else:
-            x = tf.expand_dims(x, len(x.shape))
-            max_x = tf.reduce_max(tf.abs(x), 0)
-
+        x, _, max_x = self._process_inputs(var)
         eta = self.get_slot(var, "eta")
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
