@@ -1,5 +1,4 @@
-from tensorflow.contrib.layers import fully_connected, conv2d
-
+from tensorflow.contrib.layers import fully_connected, conv2d,xavier_initializer
 import tensorflow as tf
 
 
@@ -15,15 +14,14 @@ class _Model(object):
 
 
 # Wrappers that set inputs needed for scinol algos
-def _fc(inputs, scope, *args, **kwargs):
+def _fc(inputs, scope, weights_initializer=xavier_initializer(uniform=False), *args, **kwargs):
     inputs = tf.identity(inputs, name="{}/weights/input".format(scope))
-    return fully_connected(inputs, scope=scope, *args, **kwargs)
+    return fully_connected(inputs, scope=scope, weights_initializer=weights_initializer, *args, **kwargs)
 
 
-def _conv(inputs, scope, *args, **kwargs):
+def _conv(inputs, scope, weights_initializer=xavier_initializer(uniform=False), *args, **kwargs):
     inputs = tf.identity(inputs, name="{}/weights/input".format(scope))
-
-    return conv2d(inputs, scope=scope, *args, **kwargs)
+    return conv2d(inputs, scope=scope, weights_initializer=weights_initializer, *args, **kwargs)
 
 
 class LR(_Model):
@@ -139,7 +137,7 @@ class CNN(_Model):
                  name=None,
                  activation_fn=tf.nn.relu):
         if name is None:
-            desc = "_".join(kernel_sizes) + "_" + "x".join(fc_layers)
+            desc = "_".join(str(kernel_sizes)) + "_" + "x".join(str(fc_layers))
             name = "cnn_{}_d{:0.2f}_b{}".format(desc, dropout, int(batch_norm))
 
         super(CNN, self).__init__(
@@ -155,20 +153,19 @@ class CNN(_Model):
         self.kernel_sizes = kernel_sizes
         self.strides = strides
         self.fc_layers = fc_layers
-        self.pooling = pooling,
+        self.pooling = pooling
 
     def _model(self, inputs, outputs_num, dropout_switch):
         keep_prob = 1 - (1 - self.dropout) * dropout_switch
         for i, [filters_num, kernel_size, stride] in enumerate(zip(self.filters_nums, self.kernel_sizes, self.strides)):
             inputs = _conv(
                 inputs,
-                strides=stride,
                 num_outputs=filters_num,
                 kernel_size=kernel_size,
+                stride=stride,
                 scope="conv_{}".format(i),
-                data_format='channels_last',
                 padding="VALID",
-                activation=self.activation_fn
+                activation_fn=self.activation_fn
             )
             if self.dropout > 0:
                 inputs = tf.nn.dropout(inputs, keep_prob)

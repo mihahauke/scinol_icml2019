@@ -286,6 +286,7 @@ if __name__ == '__main__':
         if "datasets" not in config:
             if "dataset" in config:
                 datasets = [config["dataset"]]
+                del config["dataset"]
             else:
                 raise ValueError("No dataset(s) specified.")
         else:
