@@ -1,20 +1,5 @@
 optimizers:
-  scinol:
-  - {}
-  - {beta: 1}
-  - {epsilon_scaled: True}
   scinol2:
-  - {epsilon_scaled: True}
-  - {}
-  scinola:
-  scinol2a:
-  scinolb:
-  scinol2b:
-  prescinol:
-  - {}
-  - {epsilon_scaled: 'd'}
-  - {epsilon_scaled: 'dt'}
-  prescinol2:
   adam:
     - {learning_rate: 1.0 }
     - {learning_rate: 0.1 }

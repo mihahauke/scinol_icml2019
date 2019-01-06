@@ -14,6 +14,7 @@ prescinol = PreScinolOptimizer
 prescinol2 = PreScinol2Optimizer
 prescinoldl = PreScinolDLOptimizer
 prescinol2dl = PreScinol2DLOptimizer
+scinol2dl = Scinol2DLOptimizer
 cocob = COCOBOptimizer
 cocob0 = COCOBOptimizer0
 
