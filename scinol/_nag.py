@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from ._scinol import _BaseOptimizer, SMALL_NUMBER
+from ._scinol import _FeatureBasedOptimizer, SMALL_NUMBER
 import tensorflow as tf
 from tensorflow.python.framework import ops
 
 
-class NAGOptimizer(_BaseOptimizer):
+class NAGOptimizer(_FeatureBasedOptimizer):
     """Optimizer that implements the NAG algorithm.
 
     See this [paper](https://arxiv.org/abs/1305.6646)

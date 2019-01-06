@@ -1,12 +1,12 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
-from ._scinol import _BaseOptimizer
+from ._scinol import _FeatureBasedOptimizer
 
 SMALL_NUMBER = 1e-10
 DEFAULT_UNPUTS_SUFFIX = "input"
 
 
-class PreScinolOptimizer(_BaseOptimizer):
+class PreScinolOptimizer(_FeatureBasedOptimizer):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -19,7 +19,7 @@ class PreScinolOptimizer(_BaseOptimizer):
                  s0=0,
                  name="PreScinol",
                  use_locking=False):
-        super(PreScinolOptimizer, self).__init__(use_locking, name)
+        super(PreScinolOptimizer, self).__init__(use_locking=use_locking, name=name)
         self.alpha = alpha
         self.epsilon = epsilon
         self.s0 = s0
@@ -69,7 +69,7 @@ class PreScinolOptimizer(_BaseOptimizer):
         return new_h
 
 
-class PreScinol2Optimizer(_BaseOptimizer):
+class PreScinol2Optimizer(_FeatureBasedOptimizer):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -81,7 +81,7 @@ class PreScinol2Optimizer(_BaseOptimizer):
                  s0=0,
                  name="PreScinol2",
                  use_locking=False):
-        super(PreScinol2Optimizer, self).__init__(use_locking, name)
+        super(PreScinol2Optimizer, self).__init__(use_locking=use_locking, name=name)
         self.alpha = alpha
         self.epsilon = epsilon
         self.s0 = s0
@@ -126,7 +126,7 @@ class PreScinol2Optimizer(_BaseOptimizer):
         return tf.group(new_h, new_eta)
 
 
-class PreScinolDLOptimizer(_BaseOptimizer):
+class PreScinolDLOptimizer(_FeatureBasedOptimizer):
     def __init__(self,
                  alpha=1.5,
                  epsilon=1.0,
@@ -159,7 +159,7 @@ class PreScinolDLOptimizer(_BaseOptimizer):
         return tf.group(new_var, new_h, new_s2)
 
 
-class PreScinol2DLOptimizer(_BaseOptimizer):
+class PreScinol2DLOptimizer(_FeatureBasedOptimizer):
     def __init__(self,
                  alpha=1.5,
                  epsilon=1.0,

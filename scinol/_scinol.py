@@ -22,14 +22,54 @@ class _BaseOptimizer(Optimizer):
     def create_const_init_slot(self, v, name, value=0):
         initializer = tf.initializers.constant(value, dtype=v.dtype)
 
-        self._get_or_make_slot_with_initializer(
+        return self._get_or_make_slot_with_initializer(
             v, initializer, v.shape, v.dtype, name, self._name)
 
     def create_normal_init_slot(self, v, name, m=0, std=1):
         initializer = tf.initializers.random_normal(mean=m, stddev=std, dtype=v.dtype)
 
-        self._get_or_make_slot_with_initializer(
+        return self._get_or_make_slot_with_initializer(
             v, initializer, v.shape, v.dtype, name, self._name)
+
+
+
+
+class _FeatureBasedOptimizer(_BaseOptimizer):
+    def __init__(self,
+                 use_locking=False,
+                 name=None,
+                 epsilon=1.0,
+                 epsilon_scaled=False,
+                 s0=0
+                 ):
+        super(_FeatureBasedOptimizer, self).__init__(use_locking=use_locking, name=name)
+        self.epsilon = float(epsilon)
+        self.epsilon_scaled = epsilon_scaled
+        self.s0 = s0
+
+    def setup_epsilon_slot(self, var, name):
+        if not self.epsilon_scaled:
+            return self.create_const_init_slot(var, name, self.epsilon)
+        if len(var.shape) == 1:
+            value = (1 / var.get_shape().as_list()[0]) ** 0.5
+            return self.create_const_init_slot(var, name, value)
+        else:
+            initializer = tf.initializers.glorot_normal(dtype=var.dtype)
+
+            return self._get_or_make_slot_with_initializer(
+                var, initializer, var.shape, var.dtype, name, self._name)
+
+    def _process_inputs(self, var):
+        x = self.inputs[var]
+        if x.shape == []:
+            max_x = tf.abs(x)
+            x2 = x ** 2
+        else:
+            x = tf.expand_dims(x, len(x.shape))
+            x2 = tf.reduce_mean(x ** 2, 0)
+            max_x = tf.reduce_max(tf.abs(x), 0)
+            x2 = tf.broadcast_to(x2, var.get_shape())
+        return x, x2, max_x
 
     def _retrieve_inputs(self, var_list):
 
@@ -118,51 +158,13 @@ class _BaseOptimizer(Optimizer):
         t_op = tf.assign_add(self.t, 1)
         update_ops.append(t_op)
         with tf.control_dependencies(update_ops):
-            return super(_BaseOptimizer, self).compute_gradients(loss, var_list,
-                                                                 gate_gradients,
-                                                                 aggregation_method,
-                                                                 colocate_gradients_with_ops,
-                                                                 grad_loss)
+            return super(_FeatureBasedOptimizer, self).compute_gradients(loss, var_list,
+                                                                         gate_gradients,
+                                                                         aggregation_method,
+                                                                         colocate_gradients_with_ops,
+                                                                         grad_loss)
 
-
-class _ScinolBase(_BaseOptimizer):
-    def __init__(self,
-                 epsilon=1.0,
-                 epsilon_scaled=False,
-                 s0=0,
-                 name=None,
-                 use_locking=False):
-        super(_ScinolBase, self).__init__(use_locking, name)
-        self.epsilon = float(epsilon)
-        self.epsilon_scaled = epsilon_scaled
-        self.s0 = s0
-
-    def setup_epsilon_slot(self, var, name):
-        if not self.epsilon_scaled:
-            self.create_const_init_slot(var, name, self.epsilon)
-        if len(var.shape) == 1:
-            value = (1 / var.get_shape().as_list()[0]) ** 0.5
-            self.create_const_init_slot(var, name, value)
-        else:
-            initializer = tf.initializers.glorot_normal(dtype=var.dtype)
-
-            self._get_or_make_slot_with_initializer(
-                var, initializer, var.shape, var.dtype, name, self._name)
-
-    def _process_inputs(self, var):
-        x = self.inputs[var]
-        if x.shape == []:
-            max_x = tf.abs(x)
-            x2 = x ** 2
-        else:
-            x = tf.expand_dims(x, len(x.shape))
-            x2 = tf.reduce_mean(x ** 2, 0)
-            max_x = tf.reduce_max(tf.abs(x), 0)
-            x2 = tf.broadcast_to(x2, var.get_shape())
-        return x, x2, max_x
-
-
-class ScinolOptimizer(_ScinolBase):
+class ScinolOptimizer(_FeatureBasedOptimizer):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -216,7 +218,7 @@ class ScinolOptimizer(_ScinolBase):
         return G, S2
 
 
-class Scinol2Optimizer(_ScinolBase):
+class Scinol2Optimizer(_FeatureBasedOptimizer):
     """Optimizer that implements the <NAME_HERE> algorithm.
 
     See this [paper](TODO)
@@ -281,6 +283,7 @@ class ScinolAOptimizer(ScinolOptimizer):
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "max", SMALL_NUMBER)
                 self.setup_epsilon_slot(v, "beta")
+                self.setup_epsilon_slot(v, "epsilon")
 
 
 class Scinol2AOptimizer(Scinol2Optimizer):
@@ -302,6 +305,7 @@ class Scinol2AOptimizer(Scinol2Optimizer):
                 self.setup_epsilon_slot(v, "eta")
 
 
+
 class ScinolBOptimizer(ScinolOptimizer):
     """Inicjalizacja podobnie jak w new_alg.tex, ale teraz S_0 = 1, G_i ~ N(0, 1),
 a cała skala siedzi w zmiennej początkowej epsilon. Tzn. trzeba dobrać epsilon = sqrt(2/(n_in + n_out)).
@@ -321,6 +325,7 @@ a cała skala siedzi w zmiennej początkowej epsilon. Tzn. trzeba dobrać epsilo
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "max", SMALL_NUMBER)
                 self.setup_epsilon_slot(v, "beta")
+                self.setup_epsilon_slot(v, "epsilon")
 
 
 class Scinol2BOptimizer(Scinol2Optimizer):
@@ -340,3 +345,44 @@ class Scinol2BOptimizer(Scinol2Optimizer):
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
                 self.create_const_init_slot(v, "max", SMALL_NUMBER)
                 self.setup_epsilon_slot(v, "eta")
+
+
+class Scinol2DLOptimizer(_BaseOptimizer):
+    def __init__(self,
+                 epsilon=1.0,
+                 s0=0,
+                 use_locking=False,
+                 name="ScInOL2DL"):
+        super(Scinol2DLOptimizer, self).__init__( use_locking=use_locking,name=name)
+        self.epsilon = float(epsilon)
+        self.s0 = s0
+
+    def _create_slots(self, var_list):
+        for v in var_list:
+            with ops.colocate_with(v):
+                self.create_const_init_slot(v, "grads_sum", 0)
+                self._get_or_make_slot(v, v, "initial_value", self._name)
+                self.create_const_init_slot(v, "squared_grads_sum", self.s0)
+                self.create_const_init_slot(v, "max", SMALL_NUMBER)
+                self.create_const_init_slot(v, "eta", self.epsilon)
+
+    def _apply_dense(self, grad, var):
+        eta = self.get_slot(var, "eta")
+        G = self.get_slot(var, "grads_sum")
+        S2 = self.get_slot(var, "squared_grads_sum")
+        M = self.get_slot(var, "max")
+        var0 = self.get_slot(var, "initial_value")
+
+        M = tf.assign(M, tf.maximum(M, tf.abs(grad)))
+
+        theta = G / (S2 + M ** 2) ** 0.5
+        new_var = tf.sign(theta) * tf.minimum(tf.abs(theta), 1.0) / (2 * (S2 + M ** 2) ** 0.5) * eta
+
+        new_G = tf.assign_add(G, -grad)
+        new_S2 = tf.assign_add(S2, (grad) ** 2)
+        new_eta = tf.maximum(0.5 * eta, eta - grad * (var - var0))
+        new_eta = tf.assign(eta, new_eta)
+
+        new_var = tf.assign(var, var0 + new_var)
+
+        return tf.group(new_G, new_S2, new_eta, new_var)
