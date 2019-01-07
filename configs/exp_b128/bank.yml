@@ -1,4 +1,5 @@
 optimizers:
+  cocob:
   scinol2:
   adam:
     - {learning_rate: 1.0 }
