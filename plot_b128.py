@@ -263,7 +263,6 @@ if __name__ == "__main__":
     tree = Tree(verbose=args.verbose)
 
     filters = ["scinol2", "cocob", "adam", "adagrad", "adadelta", "rmsprop", "sgd"]
-    # filters = ["scinol","scinol2", "prescinol"]
     excludes = ["prescinol2"]
     tree.load(args.log_dir, filters, excludes)
 
@@ -348,7 +347,6 @@ if __name__ == "__main__":
              "sgd_l0.005"}
     }
     for best_set in best_runs.values():
-        best_set.add("scinol")
         best_set.add("scinol2")
         best_set.add("cocob")
 
