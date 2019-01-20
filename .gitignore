@@ -100,6 +100,6 @@ ENV/
 # mypy
 .mypy_cache/
 .idea
-tb_logs
-graphs
+tb_logs*
+graphs*
 **zip
