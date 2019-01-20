@@ -20,7 +20,8 @@ def _fc(inputs, scope, weights_initializer=xavier_initializer(uniform=False), *a
 
 
 def _conv(inputs, scope, weights_initializer=xavier_initializer(uniform=False), *args, **kwargs):
-    inputs = tf.identity(inputs, name="{}/weights/input".format(scope))
+    # raise NotImplementedError()
+    # inputs = tf.identity(inputs, name="{}/weights/input".format(scope))
     return conv2d(inputs, scope=scope, weights_initializer=weights_initializer, *args, **kwargs)
 
 

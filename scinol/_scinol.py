@@ -32,8 +32,6 @@ class _BaseOptimizer(Optimizer):
             v, initializer, v.shape, v.dtype, name, self._name)
 
 
-
-
 class _FeatureBasedOptimizer(_BaseOptimizer):
     def __init__(self,
                  use_locking=False,
@@ -163,6 +161,7 @@ class _FeatureBasedOptimizer(_BaseOptimizer):
                                                                          aggregation_method,
                                                                          colocate_gradients_with_ops,
                                                                          grad_loss)
+
 
 class ScinolOptimizer(_FeatureBasedOptimizer):
     """Optimizer that implements the <NAME_HERE> algorithm.
@@ -305,7 +304,6 @@ class Scinol2AOptimizer(Scinol2Optimizer):
                 self.setup_epsilon_slot(v, "eta")
 
 
-
 class ScinolBOptimizer(ScinolOptimizer):
     """Inicjalizacja podobnie jak w new_alg.tex, ale teraz S_0 = 1, G_i ~ N(0, 1),
 a cała skala siedzi w zmiennej początkowej epsilon. Tzn. trzeba dobrać epsilon = sqrt(2/(n_in + n_out)).
@@ -352,10 +350,14 @@ class Scinol2DLOptimizer(_BaseOptimizer):
                  epsilon=1.0,
                  s0=0,
                  use_locking=False,
-                 name="ScInOL2DL"):
-        super(Scinol2DLOptimizer, self).__init__( use_locking=use_locking,name=name)
+                 name="ScInOL2DL",
+                 max_start=SMALL_NUMBER,
+                 epsilon_scaled=False,):
+        super(Scinol2DLOptimizer, self).__init__(use_locking=use_locking, name=name)
         self.epsilon = float(epsilon)
         self.s0 = s0
+        self.max_start = max_start
+        self.epsilon_scaled = epsilon_scaled
 
     def _create_slots(self, var_list):
         for v in var_list:
@@ -363,8 +365,18 @@ class Scinol2DLOptimizer(_BaseOptimizer):
                 self.create_const_init_slot(v, "grads_sum", 0)
                 self._get_or_make_slot(v, v, "initial_value", self._name)
                 self.create_const_init_slot(v, "squared_grads_sum", self.s0)
-                self.create_const_init_slot(v, "max", SMALL_NUMBER)
-                self.create_const_init_slot(v, "eta", self.epsilon)
+                self.create_const_init_slot(v, "max", self.max_start)
+
+                if not self.epsilon_scaled:
+                    self.create_const_init_slot(v, "eta", self.epsilon)
+                else:
+                    if len(v.shape) == 1:
+                        value = (1 / v.get_shape().as_list()[0]) ** 0.5
+                        self.create_const_init_slot(v, "eta", value)
+                    else:
+                        initializer = tf.initializers.glorot_normal(dtype=v.dtype)
+                        self._get_or_make_slot_with_initializer(
+                            v, initializer, v.shape, v.dtype, "eta", self._name)
 
     def _apply_dense(self, grad, var):
         eta = self.get_slot(var, "eta")
@@ -376,13 +388,13 @@ class Scinol2DLOptimizer(_BaseOptimizer):
         M = tf.assign(M, tf.maximum(M, tf.abs(grad)))
 
         theta = G / (S2 + M ** 2) ** 0.5
-        new_var = tf.sign(theta) * tf.minimum(tf.abs(theta), 1.0) / (2 * (S2 + M ** 2) ** 0.5) * eta
+        var_delta = tf.sign(theta) * tf.minimum(tf.abs(theta), 1.0) / (2 * (S2 + M ** 2) ** 0.5) * eta
 
         new_G = tf.assign_add(G, -grad)
         new_S2 = tf.assign_add(S2, (grad) ** 2)
-        new_eta = tf.maximum(0.5 * eta, eta - grad * (var - var0))
+        new_eta = tf.maximum(0.5 * eta, eta - grad * var_delta)
         new_eta = tf.assign(eta, new_eta)
 
-        new_var = tf.assign(var, var0 + new_var)
+        new_var = tf.assign(var, var0 + var_delta)
 
         return tf.group(new_G, new_S2, new_eta, new_var)
