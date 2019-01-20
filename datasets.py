@@ -3,16 +3,9 @@
 import os
 import sys
 import pickle
-import tarfile
-# import numpy as np
-from mnist import MNIST
-from six.moves import urllib
 from distributions import *
 
 from sklearn.preprocessing import StandardScaler
-# TODO deprecation here
-# from tensorflow.examples.tutorials.mnist import input_data as mnist_data
-from pmlb import fetch_data
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from preprocess import load_text
@@ -44,6 +37,8 @@ UCI_CENSUS_URL = UCI_DATASETS + "/census-income-mld/census.tar.gz"
 
 UCI_COVTYPE_URL = UCI_DATASETS + "/covtype/covtype.data.gz"
 
+UCI_CTSCAN_URL = UCI_DATASETS + "/00206/slice_localization_data.zip"
+
 CIFAR_URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
 CIFAR_DOWNLOAD_DIR = '/tmp/cifar10_data'
 CIFAR_EXTRACT_PATH = 'cifar-10-batches-py'
@@ -56,6 +51,10 @@ WNP_FILE = os.path.join(WNP_DOWNLOAD_DIR, "warpeace_input.txt")
 
 PTB_LINK = "http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz"
 PTB_DOWNLOAD_LINK = "/tmp/penn_treebank"
+
+REGRESSION = "regression"
+CLASSIFICATION = "classification"
+ACCEPED_TASKS = (CLASSIFICATION, REGRESSION)
 
 
 def _to_one_hot(int_labels):
@@ -77,11 +76,15 @@ class _Dataset():
                  seed=None,
                  sequential=False,
                  use_embeddings=False,
+                 task=CLASSIFICATION,
                  **kwargs):
         # TODO check if one hot coverter is ok for all datasets
         if num_outputs == 2:
             convert_labels_to_one_hot = False
             num_outputs = 1
+
+        if task not in ACCEPED_TASKS:
+            raise ValueError("task should be in {}. is: {}".format(task, ACCEPED_TASKS))
         self.sequential = sequential
         self.use_embeddings = use_embeddings
         self._name = name
@@ -89,7 +92,7 @@ class _Dataset():
         self._outputs_num = num_outputs
         self.test = list(test_data)
         self.train = list(train_data)
-
+        self.task = task
         self.one_hot_labels = convert_labels_to_one_hot
 
         if self.one_hot_labels:
@@ -166,6 +169,7 @@ class _Dataset():
                                                                   total_size) * 100.0))
                 sys.stdout.flush()
 
+            from six.moves import urllib
             filepath, _ = urllib.request.urlretrieve(url, filepath, _progress)
             statinfo = os.stat(filepath)
             print()
@@ -198,12 +202,14 @@ class Cifar10(_Dataset):
                                                               float(count * block_size) / float(total_size) * 100.0))
                 sys.stdout.flush()
 
+            from six.moves import urllib
             filepath, _ = urllib.request.urlretrieve(CIFAR_URL, filepath, _progress)
             print()
             statinfo = os.stat(filepath)
             print('Successfully downloaded', filename, statinfo.st_size, 'bytes.')
         extracted_dir_path = os.path.join(CIFAR_DOWNLOAD_DIR, CIFAR_EXTRACT_PATH)
         if not os.path.exists(extracted_dir_path):
+            import tarfile
             tarfile.open(filepath, 'r:gz').extractall(CIFAR_DOWNLOAD_DIR)
 
     def load_dataset(self):
@@ -255,6 +261,7 @@ class _Penn(_Dataset):
         download_path = "/tmp/penn_{}".format(name)
         os.makedirs(download_path, exist_ok=True)
 
+        from pmlb import fetch_data
         x, y = fetch_data(name, return_X_y=True, local_cache_dir=download_path)
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio, random_state=seed)
         num_outputs = len(np.unique(y))
@@ -343,6 +350,7 @@ class UCI_Census(_Dataset):
 
         targzfile = os.path.join(download_path, UCI_CENSUS_URL.split("/")[-1])
 
+        import tarfile
         tar = tarfile.open(targzfile, mode="r")
         tar.extractall(download_path)
         tar.close()
@@ -412,6 +420,46 @@ class UCI_Covertype(_Dataset):
                                             *args, **kwargs)
 
 
+class UCI_CTScan(_Dataset):
+    def __init__(self,
+                 name="UCI_CTScan",
+                 test_ratio=0.33,
+                 seed=None,
+                 *args, **kwargs):
+        # print("Fetching Bank dataset. It may take a while.")
+        download_path = "/tmp/uci_ctscan"
+
+        self.maybe_download(UCI_CTSCAN_URL, download_path)
+        file = os.path.join(download_path, UCI_CTSCAN_URL.split("/")[-1])
+        import zipfile
+        zip_ref = zipfile.ZipFile(file, 'r')
+        zip_ref.extractall(download_path)
+        zip_ref.close()
+
+        import pandas as pd
+        csv_file = os.path.join(download_path, "slice_localization_data.csv")
+        dataframe = pd.read_csv(csv_file, delimiter=",")
+
+        # print(dataframe.shape)
+        # exit(0)
+        y = np.float32(dataframe["reference"].values).reshape((-1,1))
+        dataframe.drop("reference", axis=1, inplace=True)
+        dataframe = pd.get_dummies(dataframe, drop_first=True)
+        x = np.float32(dataframe.values)
+
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio, random_state=seed)
+
+        num_outputs = 2  # len(np.unique(y))
+        super(UCI_CTScan, self).__init__(name,
+                                         convert_labels_to_one_hot=False,
+                                         task=REGRESSION,
+                                         train_data=(x_train, y_train),
+                                         test_data=(x_test, y_test),
+                                         input_shape=[x_train.shape[1]],
+                                         num_outputs=num_outputs,
+                                         *args, **kwargs)
+
+
 class Mnist(_Dataset):
     def __init__(self, *args, **kwargs):
         mnist_files = [MNIST_TRAIN_IMAGES_FILENAME,
@@ -423,6 +471,7 @@ class Mnist(_Dataset):
             self.maybe_download(MNIST_URL + filename, MNIST_DOWNLOAD_DIR)
 
         # print("Loading mnist data ...")
+        from mnist import MNIST
         mnist_loader = MNIST(MNIST_DOWNLOAD_DIR)
         mnist_loader.gz = True
         train_images, train_labels = mnist_loader.load_training()

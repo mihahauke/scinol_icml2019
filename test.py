@@ -16,6 +16,8 @@ DEFAULT_LOGDIR = None
 FLUSH_SECS = 2
 TESTBATCH_SIZE = 100000
 DEFAULT_EPOCHS = 30
+REGRESSION_LOSSES = ("abs", "squared")
+CLASSIFICATION_LOSSES = ("cross_entropy",)
 
 
 # TODO parsing a list is not needed anymore . .. i think
@@ -68,6 +70,7 @@ def test(
         train_logs=True,
         no_tqdm=False,
         embedding_size=None,
+        loss=None,
         verbose=False,
         *args,
         **kwargs):
@@ -76,6 +79,7 @@ def test(
         raise NotImplementedError()
     if logdir is not None:
         raise NotImplementedError()
+
     tf.gfile.MakeDirs(tblogdir)
     tf.reset_default_graph()
     dropout_switch = tf.placeholder_with_default(1.0,
@@ -91,39 +95,54 @@ def test(
         x = tf.placeholder(tf.float32, [None] + dataset.input_shape, name='x-input')
         model_input = x
     model = eval(model)(**model_args)
-    logits = model(model_input, dataset.outputs_num, dropout_switch=dropout_switch)
+    model_output = model(model_input, dataset.outputs_num, dropout_switch=dropout_switch)
 
-    if dataset.sequential:
-        # fold batchsize with sequence len
-        seq_len = logits.shape[1]
-        logits_flat = tf.reshape(logits, [-1, logits.shape[2]])
-        target = tf.placeholder(tf.int64, [None, seq_len], name='y-input')
-        target_flat = tf.reshape(target, [-1])
-        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=target_flat, logits=logits_flat)
-        correct_predictions = tf.equal(tf.argmax(logits_flat, 1), target_flat)
+    if dataset.task == CLASSIFICATION:
+        if loss is None or loss == "cross_entropy":
+            if dataset.sequential:
+                # fold batchsize with sequence len
+                seq_len = model_output.shape[1]
+                logits_flat = tf.reshape(model_output, [-1, model_output.shape[2]])
+                target = tf.placeholder(tf.int64, [None, seq_len], name='y-input')
+                target_flat = tf.reshape(target, [-1])
+                cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=target_flat, logits=logits_flat)
+                correct_predictions = tf.equal(tf.argmax(logits_flat, 1), target_flat)
+            else:
+                # TODO check if changes work as expected
+                if dataset.outputs_num == 1:
+                    target = tf.placeholder(tf.float32, [None], name='y-input')
+                    flat_y = tf.reshape(model_output, [-1])
+                    cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=target, logits=flat_y)
+                    correct_predictions = tf.equal(tf.cast(tf.greater(flat_y, 0), tf.float32), target)
+                else:
+                    target = tf.placeholder(tf.float32, [None, dataset.outputs_num], name='y-input')
+                    cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=target, logits=model_output)
+                    correct_predictions = tf.equal(tf.argmax(model_output, 1), tf.argmax(target, 1))
+            mean_cross_entropy = tf.reduce_mean(cross_entropy)
+            accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
+
+            loss_op = mean_cross_entropy
+        elif loss not in CLASSIFICATION_LOSSES:
+            raise ValueError("Loss for classification should be one of: {}, is: {}".format(CLASSIFICATION_LOSSES, loss))
+        else:
+            NotImplementedError()
     else:
-        # TODO chewck if changes work as expected
-        if dataset.outputs_num == 1:
-            target = tf.placeholder(tf.float32, [None], name='y-input')
-            flat_y = tf.reshape(logits, [-1])
-            cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(labels=target, logits=flat_y)
-            correct_predictions = tf.equal(tf.cast(tf.greater(flat_y, 0), tf.float32), target)
+        if dataset.sequential:
+            raise NotImplementedError()
         else:
             target = tf.placeholder(tf.float32, [None, dataset.outputs_num], name='y-input')
-            cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=target, logits=logits)
-            correct_predictions = tf.equal(tf.argmax(logits, 1), tf.argmax(target, 1))
+            if loss is None or loss == "squared":
+                losses = tf.reduce_mean((target - model_output) ** 2 / 2)
+            elif loss == "abs":
+                losses = tf.reduce_mean(tf.abs(target - model_output))
+            elif loss not in REGRESSION_LOSSES:
+                raise ValueError("Loss for regression should be one of: {}, is: {}".format(REGRESSION_LOSSES, loss))
+            else:
+                raise NotImplementedError()
+            loss_op = tf.reduce_mean(losses)
 
-    mean_cross_entropy = tf.reduce_mean(cross_entropy)
-    accuracy = tf.reduce_mean(tf.cast(correct_predictions, tf.float32))
-
-    loss = mean_cross_entropy
     optimizer = eval(optimizer_class)(**optimizer_args)
-    # Why de faq get_variable doesnt allow NOT TO create a new one and returns error
-    # de faq doesnt it work:
-    # inputs = {tf.get_variable("fully_connected/weights"): x,
-    #           tf.get_variable("fully_connected/biases"): tf.constant(1.0)}
-    # TODO ask about it
-    grads_and_vars = optimizer.compute_gradients(loss)
+    grads_and_vars = optimizer.compute_gradients(loss_op)
     train_step = optimizer.apply_gradients(grads_and_vars)
     # TODO add model args to writer dirs
 
@@ -137,14 +156,18 @@ def test(
         v_summary = tf.summary.histogram('{}/{}/{}'.format(summaries_prefix, model.name, var.name), var)
         grad_hist_summaries.append(g_summary)
         var_hist_summaries.append(v_summary)
-    acc_summary = tf.summary.scalar('{}/accuracy'.format(summaries_prefix), accuracy)
-    ce_summary = tf.summary.scalar('{}/cross_entropy'.format(summaries_prefix), mean_cross_entropy)
+
+    loss_summary = tf.summary.scalar('{}/{}'.format(summaries_prefix, loss), loss_op)
+    summaries = [loss_summary]
+    if dataset.task == CLASSIFICATION:
+        acc_summary = tf.summary.scalar('{}/accuracy'.format(summaries_prefix), accuracy)
+        summaries.append(acc_summary)
 
     if train_histograms:
         train_summaries = tf.summary.merge_all()
     else:
-        train_summaries = tf.summary.merge([acc_summary, ce_summary])
-    test_summaries = tf.summary.merge([acc_summary, ce_summary] + var_hist_summaries)
+        train_summaries = tf.summary.merge(summaries)
+    test_summaries = tf.summary.merge(summaries + var_hist_summaries)
 
     time = strftime("%m.%d_%H-%M-%S")
     optim_name = optimizer.get_name().lower()
@@ -171,7 +194,7 @@ def test(
                                                dropout_switch: 0})
     test_writer.add_summary(pre_run_test_summary, batches_processed)
     if no_tqdm:
-        def trange(n, *args, **kwargs):
+        def trange(n, *_, **__):
             for epoch in range(n):
                 print("Epoch {}/{}".format(epoch + 1, n))
                 yield epoch
@@ -328,7 +351,8 @@ if __name__ == '__main__':
                                 **config)
                         except Exception as ex:
                             print("======================= EXCEPTION ===================================")
-                            print("========================== {} =======================================".format(optimizer_class))
+                            print("========================== {} =======================================".format(
+                                optimizer_class))
                             print(ex)
                             traceback.print_exc(file=sys.stdout)
                             print("==========================================")
