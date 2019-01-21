@@ -66,6 +66,7 @@ def test(
         logdir=DEFAULT_LOGDIR,
         epochs=DEFAULT_EPOCHS,
         train_histograms=False,
+        test_histograms=False,
         tag=None,
         train_logs=True,
         no_tqdm=False,
@@ -98,7 +99,9 @@ def test(
     model_output = model(model_input, dataset.outputs_num, dropout_switch=dropout_switch)
 
     if dataset.task == CLASSIFICATION:
-        if loss is None or loss == "cross_entropy":
+        if loss is None:
+            loss = "cross_entropy"
+        if loss == "cross_entropy":
             if dataset.sequential:
                 # fold batchsize with sequence len
                 seq_len = model_output.shape[1]
@@ -131,15 +134,16 @@ def test(
             raise NotImplementedError()
         else:
             target = tf.placeholder(tf.float32, [None, dataset.outputs_num], name='y-input')
-            if loss is None or loss == "squared":
-                losses = tf.reduce_mean((target - model_output) ** 2 / 2)
+            if loss is None:
+                loss = "squared"
+            if loss == "squared":
+                loss_op = tf.reduce_mean((target - model_output) ** 2 / 2)
             elif loss == "abs":
-                losses = tf.reduce_mean(tf.abs(target - model_output))
+                loss_op = tf.reduce_mean(tf.abs(target - model_output))
             elif loss not in REGRESSION_LOSSES:
                 raise ValueError("Loss for regression should be one of: {}, is: {}".format(REGRESSION_LOSSES, loss))
             else:
                 raise NotImplementedError()
-            loss_op = tf.reduce_mean(losses)
 
     optimizer = eval(optimizer_class)(**optimizer_args)
     grads_and_vars = optimizer.compute_gradients(loss_op)
@@ -167,7 +171,10 @@ def test(
         train_summaries = tf.summary.merge_all()
     else:
         train_summaries = tf.summary.merge(summaries)
-    test_summaries = tf.summary.merge(summaries + var_hist_summaries)
+    if test_histograms:
+        test_summaries = tf.summary.merge(summaries + var_hist_summaries)
+    else:
+        test_summaries = tf.summary.merge(summaries)
 
     time = strftime("%m.%d_%H-%M-%S")
     optim_name = optimizer.get_name().lower()

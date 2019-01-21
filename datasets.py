@@ -447,6 +447,10 @@ class UCI_CTScan(_Dataset):
         dataframe = pd.get_dummies(dataframe, drop_first=True)
         x = np.float32(dataframe.values)
 
+        # scaler = StandardScaler()
+        # x = scaler.fit_transform(x)
+        # y = scaler.fit_transform(y)
+
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio, random_state=seed)
 
         num_outputs = 2  # len(np.unique(y))

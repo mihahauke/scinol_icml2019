@@ -250,8 +250,9 @@ class Scinol2Optimizer(_FeatureBasedOptimizer):
 
         theta = G / (S2 + M ** 2) ** 0.5
 
-        new_var = tf.sign(theta) * tf.minimum(tf.abs(theta), 1.0) / (2 * (S2 + M ** 2) ** 0.5) * eta
-        return tf.assign(var, var0 + new_var)
+        var_delta = tf.sign(theta) * tf.minimum(tf.abs(theta), 1.0) / (2 * (S2 + M ** 2) ** 0.5) * eta
+
+        return tf.assign(var, var0 + var_delta)
 
     def _apply_dense(self, grad, var):
         G = self.get_slot(var, "grads_sum")
@@ -259,11 +260,11 @@ class Scinol2Optimizer(_FeatureBasedOptimizer):
         eta = self.get_slot(var, "eta")
         var0 = self.get_slot(var, "initial_value")
 
-        G = tf.assign_add(G, -grad)
-        S2 = tf.assign_add(S2, (grad) ** 2)
-        eta = tf.assign_add(eta, -grad * (var - var0))
+        new_G = tf.assign_add(G, -grad)
+        new_S2 = tf.assign_add(S2, (grad) ** 2)
+        new_eta = tf.assign_add(eta, -grad * (var - var0))
 
-        return tf.group(G, S2, eta)
+        return tf.group(new_G, new_S2, new_eta)
 
 
 class ScinolAOptimizer(ScinolOptimizer):
@@ -352,7 +353,7 @@ class Scinol2DLOptimizer(_BaseOptimizer):
                  use_locking=False,
                  name="ScInOL2DL",
                  max_start=SMALL_NUMBER,
-                 epsilon_scaled=False,):
+                 epsilon_scaled=False, ):
         super(Scinol2DLOptimizer, self).__init__(use_locking=use_locking, name=name)
         self.epsilon = float(epsilon)
         self.s0 = s0
