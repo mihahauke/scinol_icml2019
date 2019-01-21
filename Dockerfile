@@ -35,7 +35,7 @@ RUN pip3 --no-cache-dir install \
          numpy \
          tqdm \
          python-mnist==0.5 \
-         scikit-learn==0.20\
+         scikit-learn==0.20.2\
          pmlb
 
 
