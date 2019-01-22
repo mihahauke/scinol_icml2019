@@ -5,9 +5,7 @@ import sys
 import pickle
 from distributions import *
 
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder
 from preprocess import load_text
 
 # from sklearn.metrics.pairwise import sigmoid_kernel
@@ -58,6 +56,7 @@ ACCEPED_TASKS = (CLASSIFICATION, REGRESSION)
 
 
 def _to_one_hot(int_labels):
+    from sklearn.preprocessing import OneHotEncoder
     enc = OneHotEncoder(categories='auto')
     return enc.fit_transform(int_labels.reshape([-1, 1])).toarray()
 
@@ -442,7 +441,7 @@ class UCI_CTScan(_Dataset):
 
         # print(dataframe.shape)
         # exit(0)
-        y = np.float32(dataframe["reference"].values).reshape((-1,1))
+        y = np.float32(dataframe["reference"].values).reshape((-1, 1))
         dataframe.drop("reference", axis=1, inplace=True)
         dataframe = pd.get_dummies(dataframe, drop_first=True)
         x = np.float32(dataframe.values)
@@ -516,8 +515,36 @@ class Synthetic(_Dataset):
             name=name,
             train_data=(x_train, y_train),
             test_data=(x_test, y_test),
-            input_shapmaybee=[num_features],
+            input_shape=[num_features],
             num_outputs=2,
+            **kwargs)
+
+
+class SyntheticRegression(_Dataset):
+    def __init__(self,
+                 name="normal_reg",
+                 size=10000,
+                 num_features=61,
+                 test_ratio=0.5,
+                 seed=None,
+                 distribution=normal,
+                 **kwargs):
+        x, _ = distribution(
+            size,
+            num_features=num_features,
+            loc=0.0,
+            scale=1.0,
+            seed=seed)
+        # scales = np.std(x, 0)
+        y = (x).sum(axis=1).reshape((-1, 1))
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio, random_state=seed)
+        super(SyntheticRegression, self).__init__(
+            name=name,
+            train_data=(x_train, y_train),
+            test_data=(x_test, y_test),
+            input_shape=[num_features],
+            num_outputs=2,
+            task=REGRESSION,
             **kwargs)
 
 
@@ -528,6 +555,7 @@ class SyntheticStandardized(Synthetic):
         super(SyntheticStandardized, self).__init__(
             name=name,
             **kwargs)
+        from sklearn.preprocessing import StandardScaler
         scaler = StandardScaler()
         self.train[0] = scaler.fit_transform(self.train[0])
         self.test[0] = scaler.transform(self.test[0])
@@ -587,6 +615,8 @@ SynthOutliers = lambda **kwargs: Synthetic(
     name="art_outliers",
     distribution=normal_dist_outliers,
     **kwargs)
+
+SynthReg = lambda **kwargs: SyntheticRegression(**kwargs)
 
 PennPoker = lambda **kwargs: _Penn("poker", **kwargs)
 PennFars = lambda **kwargs: _Penn("fars", **kwargs)

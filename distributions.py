@@ -10,15 +10,35 @@ def normal_scaled(size,
                   loc=0,
                   max_exponent=10.0,
                   seed=None,
+                  scale=1.0,
                   return_probs=False):
-    scales = 2.0 ** ((np.arange(num_features) / (num_features - 1) - 0.5) * 2 * max_exponent)
+    scales = scale * 2.0 ** ((np.arange(num_features) / (num_features - 1) - 0.5) * 2 * max_exponent)
     if seed is not None:
         np.random.seed(seed)
     x = np.random.normal(loc=loc,
                          scale=scales,
                          size=(size, num_features))
     w = np.ones(x.shape[1], dtype=np.float32) / (scales)
-    # np.random.normal(size=x.shape[1]) / (scales+_SMALL_NUMBER)
+    probs = _sigmoid(np.matmul(x, w))
+    labels = np.int64(np.random.binomial(1, probs))
+    if return_probs:
+        return x, labels, probs
+
+    return x, labels
+
+
+def normal(size,
+           num_features=10,
+           loc=0,
+           scale=1.0,
+           seed=None,
+           return_probs=False):
+    if seed is not None:
+        np.random.seed(seed)
+    x = np.random.normal(loc=loc,
+                         scale=scale,
+                         size=(size, num_features))
+    w = np.ones(x.shape[1], dtype=np.float32) / scale
     probs = _sigmoid(np.matmul(x, w))
     labels = np.int64(np.random.binomial(1, probs))
     if return_probs:
