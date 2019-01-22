@@ -19,13 +19,13 @@ plt.style.use("ggplot")
 class Scinol2():
     def __init__(self, vars, dtype=np.float32):
         self.vars = vars
-        self.M = {v: np.zeros_like(val, dtype=dtype) +SMALL_NUMBER  for v, val in vars.items()}
+        self.M = {v: np.zeros_like(val, dtype=dtype) + SMALL_NUMBER for v, val in vars.items()}
         self.S2 = {v: np.zeros_like(val, dtype=dtype) for v, val in vars.items()}
         self.G = {v: np.zeros_like(val, dtype=dtype) for v, val in vars.items()}
         self.eta = {v: np.ones_like(val, dtype=dtype) for v, val in vars.items()}
 
     def update(self, v, x):
-        self.M[v] = np.maximum(self.M[v], abs(x))
+        self.M[v] = np.maximum(self.M[v], np.abs(x))
         sqrt = (self.S2[v] + self.M[v] ** 2) ** 0.5
         theta = self.G[v] / sqrt
         self.vars[v][:] = np.sign(theta) * np.clip(np.abs(theta), None, 1.0) / (
@@ -34,7 +34,7 @@ class Scinol2():
     def post_update(self, v, g):
         self.G[v] -= g
         self.S2[v] += g ** 2
-        self.eta[v] -= np.matmul(g, self.vars[v])
+        self.eta[v] -= g* self.vars[v]
 
 
 def single_run(epochs):
@@ -69,8 +69,7 @@ def single_run(epochs):
         for x, target in zip(x_train[perm], y_train[perm]):
             optimizer.update('weights', x)
             optimizer.update('bias', 1.0)
-            y = np.matmul(x, w) + b
-
+            y = np.dot(x, w) + b
             loss = loss_fn(y, target)
             grad_w = grad_fn(y, target, x)
             grad_b = grad_fn(y, target, 1.0)
@@ -113,21 +112,30 @@ def single_run(epochs):
     return train_losses, test_losses
 
 
-runs = 10
+runs = 1
 from tqdm import trange
 
 all_train_losses = []
 all_test_losses = []
-epochs = 1
+epochs = 10
 for i in trange(runs):
     train_losses, test_losses = single_run(epochs)
     all_train_losses.append(train_losses)
     all_test_losses.append(test_losses)
+
 
 for train_losses in all_train_losses:
     if max(train_losses) - min(train_losses) > 10000:
         plt.yscale("log")
         print("Log scale enabled.")
     plt.plot(train_losses)
+plt.show()
+
+
+for test_losses in all_test_losses:
+    if max(test_losses) - min(test_losses) > 10000:
+        plt.yscale("log")
+        print("Log scale enabled.")
+    plt.plot(test_losses)
 
 plt.show()
