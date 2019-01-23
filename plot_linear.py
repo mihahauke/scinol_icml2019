@@ -31,11 +31,11 @@ names_dict = {
     "ScInOL_2": "ScInOL 2",
     "nag": "NAG",
     "cocob": "CoCob",
-    "Orabona": "Orabona",
+    "Orabona": "SFMD",
     'NAG': "NAG",
     'prescinol': 'Prescinol',
     'prescinol_ed': "Prescinol D",
-    'prescinol_edt': "Prescinol DT"
+    'prescinol_edt': "Alg1-K17"
 }
 yellow = (0.86, 0.7612000000000001, 0.33999999999999997)
 reddish = (0.86, 0.3712, 0.33999999999999997)
@@ -53,6 +53,7 @@ navy_blue = (0,0,0.5)
 
 axis_labels = {"cross_entropy": "cross entropy", "accuracy": "accuracy"}
 file_suffixes =  {"cross_entropy": "ce", "accuracy": "acc"}
+
 def set_ax_props(ax):
     plt.grid(color=light_gray, which="both")
     # ax.set_facecolor(white)
@@ -81,11 +82,11 @@ colors_dict = {
 
 titles_dict = {
     "mnist": "MNIST",
-    "UCI_Bank": "UCI Bank",
-    "UCI_Covertype": "UCI Covertype",
-    "UCI_Census": "UCI Census",
-    "UCI_Madelon": "UCI Madelon",
-    "Penn_shuttle": "Shuttle"
+    "UCI_Bank": "Bank (UCI)",
+    "UCI_Covertype": "Covertype (UCI)",
+    "UCI_Census": "Census (UCI)",
+    "UCI_Madelon": "Madelon (UCI)",
+    "Penn_shuttle": "Shuttle (UCI)"
 }
 classes = {
     "mnist": 10,

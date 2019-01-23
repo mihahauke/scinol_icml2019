@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-ROOT_DIR="/home/mkempka/optimizers"
-cd ${ROOT_DIR}
+ACTUAL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/..
+cd ${ACTUAL_DIR}
 
 NAME="optim_`hostname`"
 IMAGE_TAG="optim"

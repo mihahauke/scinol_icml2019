@@ -13,10 +13,11 @@ import itertools as it
 
 from tqdm import tqdm
 
+
 # TODO maybe it's a stupid idea, maybe I can do it with pandas?
 # it seems that not really, different datasets and test/train sets will have different dimensionality
 class Tree(object):
-    def __init__(self,key="cross_entropy", verbose=False):
+    def __init__(self, key="cross_entropy", verbose=False):
         def recursive_defaultdict_factory():
             return defaultdict(recursive_defaultdict_factory)
 
@@ -71,19 +72,14 @@ class Tree(object):
                     if event.HasField('summary'):
                         steps.append(event.step)
                         for value in event.summary.value:
-                            if value.tag.endswith("/"+self.key):
+                            if value.tag.endswith("/" + self.key):
                                 values.append(value.simple_value)
             except:
                 print("Could not read '{}'".format(filename))
 
             data = [steps[1:], values[1:]]
 
-            # TODO and why is this line here?
-            if dataset == "UCI_Madelon":
-                data = [steps, values]
-
             self._add_leaf(tokens_list, data)
-
 
         self._convert_lists_to_arrays()
         self._index()
@@ -161,6 +157,3 @@ def save_plot(path, extension="pdf", logscale=False, verbose=False):
         print("Saving {}".format(path))
     plt.savefig(path)
     plt.clf()
-
-
-
