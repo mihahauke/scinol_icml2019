@@ -263,6 +263,8 @@ class _Penn(_Dataset):
         from pmlb import fetch_data
         x, y = fetch_data(name, return_X_y=True, local_cache_dir=download_path)
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_ratio, random_state=seed)
+        print(len(x_train))
+        exit(0)
         num_outputs = len(np.unique(y))
         super(_Penn, self).__init__("Penn_" + name,
                                     train_data=(x_train, y_train),
@@ -607,7 +609,7 @@ class WarAndPeace(_CharText):
 
 SynthScaled = lambda **kwargs: Synthetic(
     name="art_scaled",
-    size=25000,
+    size=10000,
     test_ratio=0.8,
     distribution=normal_scaled,
     **kwargs)
@@ -616,6 +618,13 @@ SynthOutliers = lambda **kwargs: Synthetic(
     distribution=normal_dist_outliers,
     **kwargs)
 
+
+Artificial = lambda **kwargs: Synthetic(
+    name="artificial",
+    size=105000,
+    test_ratio=0.9523809523809523,
+    distribution=normal_scaled,
+    **kwargs)
 SynthReg = lambda **kwargs: SyntheticRegression(**kwargs)
 
 PennPoker = lambda **kwargs: _Penn("poker", **kwargs)

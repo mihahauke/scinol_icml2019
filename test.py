@@ -72,6 +72,7 @@ def test(
         no_tqdm=False,
         embedding_size=None,
         loss=None,
+        test_every=None,
         verbose=False,
         *args,
         **kwargs):
@@ -81,6 +82,8 @@ def test(
     if logdir is not None:
         raise NotImplementedError()
 
+    if test_every is None:
+        test_every = np.ceil(len(dataset.train[0])/dataset.train_batchsize)
     tf.gfile.MakeDirs(tblogdir)
     tf.reset_default_graph()
     dropout_switch = tf.placeholder_with_default(1.0,
@@ -228,13 +231,13 @@ def test(
                          feed_dict={x: bx,
                                     target: by,
                                     dropout_switch: 1})
-        # TODO change it to minibatches
-        test_x, test_y = dataset.get_test_data()
-        test_summary = sess.run(test_summaries,
-                                feed_dict={x: test_x,
-                                           target: test_y,
-                                           dropout_switch: 0})
-        test_writer.add_summary(test_summary, batches_processed)
+            if batches_processed % test_every == 0:
+                test_x, test_y = dataset.get_test_data()
+                test_summary = sess.run(test_summaries,
+                                        feed_dict={x: test_x,
+                                                   target: test_y,
+                                                   dropout_switch: 0})
+                test_writer.add_summary(test_summary, batches_processed)
 
     if train_writer is not None:
         train_writer.flush()
