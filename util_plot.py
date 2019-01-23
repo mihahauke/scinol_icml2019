@@ -16,7 +16,7 @@ from tqdm import tqdm
 # TODO maybe it's a stupid idea, maybe I can do it with pandas?
 # it seems that not really, different datasets and test/train sets will have different dimensionality
 class Tree(object):
-    def __init__(self, verbose=False):
+    def __init__(self,key="cross_entropy", verbose=False):
         def recursive_defaultdict_factory():
             return defaultdict(recursive_defaultdict_factory)
 
@@ -27,6 +27,7 @@ class Tree(object):
         self.architectures = set()
         self.algorithms = set()
         self.verbose = verbose
+        self.key = key
 
     def load(self, logdir, filters=None, excludes=None):
         files = glob.glob('{}/**/*events*'.format(logdir), recursive=True)
@@ -63,24 +64,23 @@ class Tree(object):
             self.algorithms.add(algo)
 
             tokens_list = [dataset, mode, architecture, algo]
-            acc = []
-            entropy = []
+            values = []
             steps = []
             try:
                 for event in tf.train.summary_iterator(filename):
                     if event.HasField('summary'):
                         steps.append(event.step)
                         for value in event.summary.value:
-                            if value.tag.endswith("/accuracy"):
-                                acc.append(value.simple_value)
-                            elif value.tag.endswith("/cross_entropy"):
-                                entropy.append(value.simple_value)
+                            if value.tag.endswith("/"+self.key):
+                                values.append(value.simple_value)
             except:
                 print("Could not read '{}'".format(filename))
 
-            data = [steps[1:], entropy[1:]]
+            data = [steps[1:], values[1:]]
+
+            # TODO and why is this line here?
             if dataset == "UCI_Madelon":
-                data = [steps, entropy]
+                data = [steps, values]
 
             self._add_leaf(tokens_list, data)
 

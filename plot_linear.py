@@ -51,6 +51,8 @@ white = (1.0, 1.0, 1.0)
 light_gray = (0.95, 0.95, 0.95)
 navy_blue = (0,0,0.5)
 
+axis_labels = {"cross_entropy": "cross entropy", "accuracy": "accuracy"}
+file_suffixes =  {"cross_entropy": "ce", "accuracy": "acc"}
 def set_ax_props(ax):
     plt.grid(color=light_gray, which="both")
     # ax.set_facecolor(white)
@@ -291,6 +293,7 @@ if __name__ == "__main__":
     parser.add_argument("--show", "-s", default=False, action="store_true")
 
     parser.add_argument("--log-scale", "-log", default=False, action="store_true")
+    parser.add_argument("--key", "-k", default="cross_entropy")
     args = parser.parse_args()
 
     # artificial exp :
@@ -322,7 +325,7 @@ if __name__ == "__main__":
                                     markersize=4,
                                     linewidth=1 / len(runs[name]),
                                     legend=(i == 0),
-                                    value="cross entropy",
+                                    value=axis_labels["cross_entropy"],
                                     ax=ax,
                                     )
             ax = sns.tsplot([BEST_ENTROPY] * len(t),
@@ -336,7 +339,7 @@ if __name__ == "__main__":
             plt.xlabel("# iterations")
 
 
-    tree = Tree(verbose=args.verbose)
+    tree = Tree(key=args.key,verbose=args.verbose)
 
     filters = ["scinol", "scinol2", "cocob", "adam", "adagrad", "nag", "sgd_dsqrt","prescinol_edt"]
     # filters = ["scinol","scinol2", "prescinol"]
@@ -371,11 +374,11 @@ if __name__ == "__main__":
             try:
                 plot_with_std(tree,
                               tag_sets=[key],
-                              y_axis="cross entropy",
+                              y_axis=axis_labels[args.key],
                               title="{}: {}".format(dataset, algo),
                               err_style="unit_traces",
                               )
-                path = os.path.join(args.output_dir, dataset, algo)
+                path = os.path.join(args.output_dir, dataset,file_suffixes[args.key], algo)
                 if args.log_scale:
                     plt.yscale("log")
                     path += "_log"
@@ -448,11 +451,11 @@ if __name__ == "__main__":
         tag_set = sorted(new_tag_set, key=lambda x: x[3])
         plot_with_std(tree,
                       tag_sets=tag_set,
-                      y_axis="cross entropy",
+                      y_axis=axis_labels[args.key],
                       title=titles_dict[d],
                       line=None
                       )
-        path = os.path.join(args.output_dir, d)
+        path = os.path.join(args.output_dir, file_suffixes[args.key],d)
         if args.log_scale:
             plt.yscale("log")
             path += "_log"
