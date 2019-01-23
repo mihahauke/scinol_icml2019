@@ -142,8 +142,8 @@ class _Dataset():
         x, y = self.train
         num_examples = len(x)
 
-        perm = np.arange(num_examples)
-        np.random.shuffle(perm)
+        # TODO seed support
+        perm = np.random.permutation(num_examples)
         for ai in range(0, num_examples, batchsize):
             bi = min(ai + batchsize, num_examples)
             minibatch = x[perm[ai:bi]], y[perm[ai:bi]]

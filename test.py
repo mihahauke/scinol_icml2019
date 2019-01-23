@@ -95,6 +95,7 @@ def test(
     else:
         x = tf.placeholder(tf.float32, [None] + dataset.input_shape, name='x-input')
         model_input = x
+
     model = eval(model)(**model_args)
     model_output = model(model_input, dataset.outputs_num, dropout_switch=dropout_switch)
 
@@ -134,6 +135,7 @@ def test(
             raise NotImplementedError()
         else:
             target = tf.placeholder(tf.float32, [None, dataset.outputs_num], name='y-input')
+
             if loss is None:
                 loss = "squared"
             if loss == "squared":
@@ -146,9 +148,10 @@ def test(
                 raise NotImplementedError()
 
     optimizer = eval(optimizer_class)(**optimizer_args)
+    preapply_ops = getattr(optimizer, "preapply_ops", None)
     grads_and_vars = optimizer.compute_gradients(loss_op)
+
     train_step = optimizer.apply_gradients(grads_and_vars)
-    # TODO add model args to writer dirs
 
     # Summaries
     summaries_prefix = dataset.get_name()
@@ -212,6 +215,8 @@ def test(
     for _ in trange(epochs, desc="{}_{}".format(optim_name, oargs).strip("_")):
         for bx, by in dataset.train_batches():
             batches_processed += 1
+            if preapply_ops is not None:
+                sess.run(preapply_ops, feed_dict={x: bx, dropout_switch: 1})
             if train_logs:
                 train_summary, _ = sess.run([train_summaries, train_step],
                                             feed_dict={x: bx,

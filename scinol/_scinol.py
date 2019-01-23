@@ -1,15 +1,9 @@
 import tensorflow as tf
-from tensorflow.python.eager import backprop
-from tensorflow.python.eager import context
 from tensorflow.python.framework import ops
-from tensorflow.python.ops import variable_scope
 from tensorflow.python.ops import variables
-from tensorflow.python.training import distribute as distribute_lib
-from tensorflow.python.training import distribution_strategy_context
-from tensorflow.python.util import nest
 from tensorflow.python.training.optimizer import Optimizer
 
-SMALL_NUMBER = 1e-10
+SMALL_NUMBER = 1e-15
 DEFAULT_UNPUTS_SUFFIX = "input"
 
 
@@ -47,7 +41,7 @@ class _FeatureBasedOptimizer(_BaseOptimizer):
 
     def setup_epsilon_slot(self, var, name):
         if not self.epsilon_scaled:
-            return self.create_const_init_slot(var, name, self.epsilon)
+            return self.create_const_init_slot(var, name, 1.0)
         if len(var.shape) == 1:
             value = (1 / var.get_shape().as_list()[0]) ** 0.5
             return self.create_const_init_slot(var, name, value)
@@ -83,84 +77,63 @@ class _FeatureBasedOptimizer(_BaseOptimizer):
                 inputs = inputs.outputs[0]
             self.inputs[var] = inputs
 
-    def compute_gradients(self, loss, var_list=None,
-                          gate_gradients=Optimizer.GATE_OP,
-                          aggregation_method=None,
-                          colocate_gradients_with_ops=False,
-                          grad_loss=None):
-        # TODO so many lines just to get var_list :/?
-        if callable(loss):
-            with backprop.GradientTape() as tape:
-                if var_list is not None:
-                    tape.watch(var_list)
-                loss_value = loss()
-
-                # Scale loss if using a "mean" loss reduction and multiple towers.
-                # Have to be careful to call distribute_lib.get_loss_reduction()
-                # *after* loss() is evaluated, so we know what loss reduction it uses.
-                # TODO(josh11b): Test that we handle weight decay in a reasonable way.
-                if (distribute_lib.get_loss_reduction() ==
-                        variable_scope.VariableAggregation.MEAN):
-                    num_towers = distribution_strategy_context.get_distribution_strategy(
-                    ).num_towers
-                    if num_towers > 1:
-                        loss_value *= (1. / num_towers)
-
-            if var_list is None:
-                var_list = tape.watched_variables()
-            # TODO(jhseu): Figure out why GradientTape's gradients don't require loss
-            # to be executed.
-            with ops.control_dependencies([loss_value]):
-                grads = tape.gradient(loss_value, var_list, grad_loss)
-            return list(zip(grads, var_list))
-
-        # Non-callable/Tensor loss case
-        if context.executing_eagerly():
-            raise RuntimeError(
-                "`loss` passed to Optimizer.compute_gradients should "
-                "be a function when eager execution is enabled.")
-
-        # Scale loss if using a "mean" loss reduction and multiple towers.
-        if (distribute_lib.get_loss_reduction() ==
-                variable_scope.VariableAggregation.MEAN):
-            num_towers = distribution_strategy_context.get_distribution_strategy(
-            ).num_towers
-            if num_towers > 1:
-                loss *= (1. / num_towers)
-
-        if gate_gradients not in [Optimizer.GATE_NONE, Optimizer.GATE_OP,
-                                  Optimizer.GATE_GRAPH]:
-            raise ValueError("gate_gradients must be one of: Optimizer.GATE_NONE, "
-                             "Optimizer.GATE_OP, Optimizer.GATE_GRAPH.  Not %s" %
-                             gate_gradients)
-        self._assert_valid_dtypes([loss])
-        if grad_loss is not None:
-            self._assert_valid_dtypes([grad_loss])
-        if var_list is None:
-            var_list = (
+    # def compute_gradients(self, loss, var_list=None,
+    #                       gate_gradients=Optimizer.GATE_OP,
+    #                       aggregation_method=None,
+    #                       colocate_gradients_with_ops=False,
+    #                       grad_loss=None):
+    #
+    #     # TODO perhaps retrieve lost copied code from here some day
+    #     if var_list is None:
+    #         var_list = (
+    #                 variables.trainable_variables() +
+    #                 ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+    #     else:
+    #         var_list = nest.flatten(var_list)
+    #
+    #     # pylint: disable=protected-access
+    #     var_list += ops.get_collection(ops.GraphKeys._STREAMING_MODEL_PORTS)
+    #     # pylint: enable=protected-access
+    #     if not var_list:
+    #         raise ValueError("No variables to optimize.")
+    #
+    #     if self.inputs is None:
+    #         self._retrieve_inputs(var_list)
+    #     self._create_slots(var_list)
+    #     preapply_ops = [self._preapply_dense(var) for var in var_list]
+    #
+    #     t_op = tf.assign_add(self.t, 1)
+    #     preapply_ops.append(t_op)
+    #
+    #     with tf.control_dependencies(preapply_ops):
+    #         return super(_FeatureBasedOptimizer, self).compute_gradients(loss, var_list,
+    #                                                                      gate_gradients,
+    #                                                                      aggregation_method,
+    #                                                                      colocate_gradients_with_ops,
+    #                                                                      grad_loss)
+    @property
+    def preapply_ops(self):
+        var_list = (
                 variables.trainable_variables() +
                 ops.get_collection(ops.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
-        else:
-            var_list = nest.flatten(var_list)
-        # pylint: disable=protected-access
         var_list += ops.get_collection(ops.GraphKeys._STREAMING_MODEL_PORTS)
-        # pylint: enable=protected-access
-        if not var_list:
-            raise ValueError("No variables to optimize.")
 
         if self.inputs is None:
             self._retrieve_inputs(var_list)
         self._create_slots(var_list)
+        preapply_ops = [self._preapply_dense(var) for var in var_list]
 
-        update_ops = [self._preapply_dense(var) for var in var_list]
         t_op = tf.assign_add(self.t, 1)
-        update_ops.append(t_op)
-        with tf.control_dependencies(update_ops):
-            return super(_FeatureBasedOptimizer, self).compute_gradients(loss, var_list,
-                                                                         gate_gradients,
-                                                                         aggregation_method,
-                                                                         colocate_gradients_with_ops,
-                                                                         grad_loss)
+        preapply_ops.append(t_op)
+
+        return preapply_ops
+
+    def apply_gradients(self, grads_and_vars, global_step=None, name=None):
+        unzipped_grads_and_vars = []
+        for g, v in grads_and_vars:
+            unzipped_grads_and_vars += [g, v]
+        with tf.control_dependencies(unzipped_grads_and_vars):
+            return super(_FeatureBasedOptimizer, self).apply_gradients(grads_and_vars, global_step, name)
 
 
 class ScinolOptimizer(_FeatureBasedOptimizer):
@@ -246,15 +219,15 @@ class Scinol2Optimizer(_FeatureBasedOptimizer):
         M = self.get_slot(var, "max")
         var0 = self.get_slot(var, "initial_value")
 
-        M = tf.assign(M, tf.maximum(M, max_x))
+        new_M = tf.assign(M, tf.maximum(M, max_x))
 
-        theta = G / (S2 + M ** 2) ** 0.5
+        theta = G / (S2 + new_M ** 2) ** 0.5
 
-        var_delta = tf.sign(theta) * tf.minimum(tf.abs(theta), 1.0) / (2 * (S2 + M ** 2) ** 0.5) * eta
-
+        var_delta = tf.sign(theta) * tf.minimum(tf.abs(theta), 1.0) / (2 * (S2 + new_M ** 2) ** 0.5) * eta
         return tf.assign(var, var0 + var_delta)
 
     def _apply_dense(self, grad, var):
+        x, _, max_x = self._process_inputs(var)
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
         eta = self.get_slot(var, "eta")
@@ -264,6 +237,21 @@ class Scinol2Optimizer(_FeatureBasedOptimizer):
         new_S2 = tf.assign_add(S2, (grad) ** 2)
         new_eta = tf.assign_add(eta, -grad * (var - var0))
 
+        # import sys
+        # if "weights" in var.name:
+        #     n = "W: "
+        # else:
+        #     n = "B:"
+        # print_op = tf.print(
+        #     n, "\t",
+        #     tf.reduce_sum(var ** 2),
+        #     "g:", tf.reduce_sum(grad),
+        #     "x:", tf.reduce_sum(x),
+        #     "G:", tf.reduce_sum(new_G),
+        #     "S2:", tf.reduce_sum(new_S2),
+        #     "eta:", tf.reduce_sum(new_eta),
+        #     summarize=-1, output_stream=sys.stdout)
+        # with ops.control_dependencies([print_op]):
         return tf.group(new_G, new_S2, new_eta)
 
 

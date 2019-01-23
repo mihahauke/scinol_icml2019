@@ -38,6 +38,7 @@ def normal(size,
     x = np.random.normal(loc=loc,
                          scale=scale,
                          size=(size, num_features))
+    x = np.array(x,dtype=np.float32)
     w = np.ones(x.shape[1], dtype=np.float32) / scale
     probs = _sigmoid(np.matmul(x, w))
     labels = np.int64(np.random.binomial(1, probs))
