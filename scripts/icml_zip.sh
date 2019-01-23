@@ -17,7 +17,9 @@ zip -r icml_files.zip  \
         requirements.txt \
         scinol/*py \
         scripts/docker_build_n_run.sh \
-        icml_reproduce.sh \
+        scripts/icml_reproduce.sh \
         short_names.py \
         test.py \
-        util_plot.py
+        util_plot.py \
+        README.md \
+
