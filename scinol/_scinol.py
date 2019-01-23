@@ -121,10 +121,10 @@ class _FeatureBasedOptimizer(_BaseOptimizer):
         if self.inputs is None:
             self._retrieve_inputs(var_list)
         self._create_slots(var_list)
-        preapply_ops = [self._preapply_dense(var) for var in var_list]
 
         t_op = tf.assign_add(self.t, 1)
-        preapply_ops.append(t_op)
+        with tf.control_dependencies([t_op]):
+            preapply_ops = [self._preapply_dense(var) for var in var_list]
 
         return preapply_ops
 
@@ -168,26 +168,26 @@ class ScinolOptimizer(_FeatureBasedOptimizer):
         M = self.get_slot(var, "max")
         var0 = self.get_slot(var, "initial_value")
         epsilon = self.get_slot(var, "epsilon")
-        t = tf.to_float(self.t) + 1
+        t = tf.to_float(self.t)
 
-        M = tf.assign(M, tf.maximum(M, max_x))
+        new_M = tf.assign(M, tf.maximum(M, max_x))
         if self.beta is not None:
             beta = tf.constant(float(self.beta))
         else:
-            beta = tf.assign(beta, tf.minimum(beta, epsilon * (S2 + M ** 2) / (x2 * t)))
+            beta = tf.assign(beta, tf.minimum(beta, (S2 + new_M ** 2) / (x2 * t)))
 
-        theta = G / (S2 + M ** 2) ** 0.5
-        new_var = (beta * tf.sign(theta)) / (2 * (S2 + M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
-        return tf.assign(var, var0 + new_var)
+        theta = G / (S2 + new_M ** 2) ** 0.5
+        new_var = (beta * tf.sign(theta)) / (2 * (S2 + new_M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
+        return tf.assign(var, new_var)
 
     def _apply_dense(self, grad, var):
         G = self.get_slot(var, "grads_sum")
         S2 = self.get_slot(var, "squared_grads_sum")
 
-        G = tf.assign_add(G, -grad)
-        S2 = tf.assign_add(S2, (grad) ** 2)
+        new_G = tf.assign_add(G, -grad)
+        new_S2 = tf.assign_add(S2, (grad) ** 2)
 
-        return G, S2
+        return new_G, new_S2
 
 
 class Scinol2Optimizer(_FeatureBasedOptimizer):
