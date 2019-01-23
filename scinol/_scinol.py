@@ -174,11 +174,11 @@ class ScinolOptimizer(_FeatureBasedOptimizer):
         if self.beta is not None:
             beta = tf.constant(float(self.beta))
         else:
-            beta = tf.assign(beta, tf.minimum(beta, (S2 + new_M ** 2) / (x2 * t)))
+            beta = tf.assign(beta, tf.minimum(beta, epsilon*(S2 + new_M ** 2) / (x2 * t)))
 
         theta = G / (S2 + new_M ** 2) ** 0.5
         new_var = (beta * tf.sign(theta)) / (2 * (S2 + new_M ** 2) ** 0.5) * (tf.exp(tf.abs(theta) / 2) - 1)
-        return tf.assign(var, new_var)
+        return tf.assign(var, new_var- var0)
 
     def _apply_dense(self, grad, var):
         G = self.get_slot(var, "grads_sum")

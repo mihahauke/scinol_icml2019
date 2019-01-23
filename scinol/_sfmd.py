@@ -5,23 +5,22 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 
 
-class NAGOptimizer(_FeatureBasedOptimizer):
+class SFMDOptimizer(_FeatureBasedOptimizer):
     """Optimizer that implements the NAG algorithm.
 
     See this TODO
     """
 
-    def __init__(self, s0=SMALL_NUMBER, g0=SMALL_NUMBER, learning_rate=0.1, name="NAG", use_locking=False):
-        super(NAGOptimizer, self).__init__(use_locking=use_locking, name=name)
+    def __init__(self, s0=1.0, learning_rate=0.1, name="SFMD", use_locking=False):
+        super(SFMDOptimizer, self).__init__(use_locking=use_locking, name=name)
         self.eta = learning_rate
         self.s0 = s0
-        self.g0 = g0
 
     def _create_slots(self, var_list):
         for v in var_list:
             with ops.colocate_with(v):
                 self.create_const_init_slot(v, "S2", self.s0)
-                self.create_const_init_slot(v, "G", self.g0)
+                self.create_const_init_slot(v, "G", 0)
                 self.create_const_init_slot(v, "max", SMALL_NUMBER)
 
     def _preapply_dense(self, var):
@@ -31,7 +30,7 @@ class NAGOptimizer(_FeatureBasedOptimizer):
         M = self.get_slot(var, "max")
 
         new_M = tf.assign(M, tf.maximum(M, max_x))
-        d = 1
+        d = var.shape.as_list()[-1]
         new_var = tf.assign(var, -self.eta * G / (d ** 0.5 * S2 ** 0.5 * new_M ** 2))
 
         return new_var
@@ -40,7 +39,8 @@ class NAGOptimizer(_FeatureBasedOptimizer):
         S2 = self.get_slot(var, "S2")
         G = self.get_slot(var, "G")
         M = self.get_slot(var, "max")
-        new_G = tf.assign_add(G, grad ** 2)
+
+        new_G = tf.assign_add(G, grad)
         new_S2 = tf.assign_add(S2, grad ** 2 / M ** 2)
         return new_S2, new_G
 

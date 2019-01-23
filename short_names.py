@@ -3,6 +3,7 @@ import tensorflow as tf
 
 from cocob import COCOBOptimizer, COCOBOptimizer0
 
+sfmd = SFMDOptimizer
 nag = NAGOptimizer
 scinol = ScinolOptimizer
 scinol2 = Scinol2Optimizer

@@ -17,7 +17,7 @@ Just run:
 
 You should see this output on the console:
 
-```bash
+```
 # Optimizers: 26
 # Models: 1
 Tests in total: 26
@@ -33,7 +33,16 @@ Do not be bothered by the fact that more than 100% is downloaded. Our scripts wo
 # Output
 The scripts create **tb_logs_linear** directory with summaries from tensorflow, however do not try to run it via tensorboard because so much data will clog your ram. This directory weighs ~2.7 GB because tensordflow apparently can't write data efficiently.
 
+
 Additionally **graphs_linear** directory will be created with graphs just like those used in the paper and more (separate graphs for each algorithm and runs for learning rates not shown in the paper).
+
+## Artificial experiment
+**tb_logs_art** are also created which contain logs from artificial experiment. To see them run:
+
+```bash
+tensorboard --logdir=tb_logs_art
+```
+
 
 
 
