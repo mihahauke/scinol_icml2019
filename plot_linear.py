@@ -5,6 +5,7 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 import warnings
 from collections import defaultdict
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 import seaborn as sns
 import tensorflow as tf
 import glob
@@ -16,6 +17,10 @@ import pandas as pd
 
 # plt.style.use("ggplot")
 from tqdm import tqdm
+
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['ps.fonttype'] = 42
+# mpl.rcParams['text.usetex'] = True
 
 names_dict = {
     "adam": "Adam",
@@ -33,8 +38,6 @@ names_dict = {
     "cocob": "CoCob",
     "Orabona": "SFMD",
     'NAG': "NAG",
-    'prescinol': 'Prescinol',
-    'prescinol_ed': "Prescinol D",
     'prescinol_edt': "Alg1-K17"
 }
 yellow = (0.86, 0.7612000000000001, 0.33999999999999997)
@@ -49,10 +52,11 @@ grey = (0.5, 0.5, 0.5)
 black = "black"
 white = (1.0, 1.0, 1.0)
 light_gray = (0.95, 0.95, 0.95)
-navy_blue = (0,0,0.5)
+navy_blue = (0, 0, 0.5)
 
 axis_labels = {"cross_entropy": "cross entropy", "accuracy": "accuracy"}
-file_suffixes =  {"cross_entropy": "ce", "accuracy": "acc"}
+file_suffixes = {"cross_entropy": "ce", "accuracy": "acc"}
+
 
 def set_ax_props(ax):
     plt.grid(color=light_gray, which="both")
@@ -74,8 +78,6 @@ colors_dict = {
     "Orabona": red_orange,
     'NAG': violet,
     'SGD': grey,
-    'prescinol': violet,
-    'prescinol_ed': red_orange,
     'prescinol_edt': navy_blue
 
 }
@@ -107,13 +109,10 @@ markers_dict = {
     "ScInOL_2": "v",
     "sgd_dsqrt": "d",
     "Adam": "P",
-
     "Orabona": "X",
     "cocob": "X",
     'NAG': "s",
     'SGD': "d",
-    'prescinol': "^",
-    'prescinol_ed': "v",
     'prescinol_edt': "*"
 
 }
@@ -276,7 +275,7 @@ def plot_with_std_v2(tree,
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser("Plots multiple runs of benchmark algorithms.",
+    parser = ArgumentParser(description="Plots multiple runs of benchmark algorithms.",
                             formatter_class=ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-o", "--output-dir",
@@ -294,7 +293,7 @@ if __name__ == "__main__":
     parser.add_argument("--show", "-s", default=False, action="store_true")
 
     parser.add_argument("--log-scale", "-log", default=False, action="store_true")
-    parser.add_argument("--key", "-k", default="cross_entropy")
+    parser.add_argument("--key", "-k", default="cross_entropy", choices=tuple(file_suffixes))
     args = parser.parse_args()
 
     # artificial exp :
@@ -340,12 +339,11 @@ if __name__ == "__main__":
             plt.xlabel("# iterations")
 
 
-    tree = Tree(key=args.key,verbose=args.verbose)
+    tree = Tree(key=args.key, verbose=args.verbose)
 
-    filters = ["scinol", "scinol2", "cocob", "adam", "adagrad", "nag", "sgd_dsqrt","prescinol_edt"]
-    # filters = ["scinol","scinol2", "prescinol"]
+    filters = ["scinol", "scinol2", "cocob", "adam", "adagrad", "nag", "sgd", "prescinol_edt", ]
 
-    excludes = ["prescinol2"]
+    excludes = []
     tree.load(args.log_dir, filters, excludes)
 
     if args.list:
@@ -379,7 +377,7 @@ if __name__ == "__main__":
                               title="{}: {}".format(dataset, algo),
                               err_style="unit_traces",
                               )
-                path = os.path.join(args.output_dir, dataset,file_suffixes[args.key], algo)
+                path = os.path.join(args.output_dir, dataset, file_suffixes[args.key], algo)
                 if args.log_scale:
                     plt.yscale("log")
                     path += "_log"
@@ -440,8 +438,6 @@ if __name__ == "__main__":
         best_set.add("scinol")
         best_set.add("scinol2")
         best_set.add("cocob")
-        # best_set.add("prescinol")
-        # best_set.add("prescinol_ed")
         best_set.add("prescinol_edt")
 
     for [d, m, a], tag_set in tqdm(joined_keys.items(), leave=False):
@@ -456,7 +452,7 @@ if __name__ == "__main__":
                       title=titles_dict[d],
                       line=None
                       )
-        path = os.path.join(args.output_dir, file_suffixes[args.key],d)
+        path = os.path.join(args.output_dir, file_suffixes[args.key], d)
         if args.log_scale:
             plt.yscale("log")
             path += "_log"

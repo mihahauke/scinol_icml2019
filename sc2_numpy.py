@@ -34,13 +34,14 @@ class Scinol2():
     def post_update(self, v, g):
         self.G[v] -= g
         self.S2[v] += g ** 2
-        self.eta[v] -= g* self.vars[v]
+        self.eta[v] -= g * self.vars[v]
 
 
 def single_run(epochs):
-    dataset = SynthReg()
+    dataset = SynthReg(seed=123)
     # dataset = UCI_CTScan()
     x_train, y_train = dataset.train
+    print(x_train.dtype)
     # limit = 100
     # x_train=x_train[0:limit]
     # y_train=y_train[0:limit]
@@ -63,8 +64,8 @@ def single_run(epochs):
         return np.sign(pred - target) * x
 
     def train_epoch():
-        perm = np.random.permutation(len(x_train))
-
+        # perm = np.random.permutation(len(x_train))
+        perm = np.arange(len(x_train))
         losses = []
         for x, target in zip(x_train[perm], y_train[perm]):
             optimizer.update('weights', x)
@@ -76,18 +77,34 @@ def single_run(epochs):
 
             optimizer.post_update('weights', grad_w)
             optimizer.post_update('bias', grad_b)
-            # print("x: {:0.7f}, \tw:     {:0.7f},  \tb: {:0.7f}".format(x[0], w[0], b[0]))
-            # print("y: {:0.7f}, \tgw:    {:0.7f}, \tgb: {:0.7f}".format(y[0], grad_w[0], grad_b[0]))
-            # print("t: {:0.7f}  \tGw:    {:0.7f}, \tGb: {:0.7f}".format(target,optimizer.G["weights"][0], optimizer.G["bias"][0]))
-            # print("l: {:0.7f}  \tSw:    {:0.7f}, \tSb: {:0.7f}".format(loss[0], optimizer.S2["weights"][0], optimizer.S2["bias"][0]))
-            # print("            \tEta w: {:0.7f}, \tEb: {:0.7f}".format(optimizer.eta["weights"][0], optimizer.eta["bias"][0]))
-            # print("=================================")
             if np.isnan(loss) or np.isinf(loss):
                 print("Nan/inf detected. Aborting!")
                 # np.savetxt("bad_data.txt",np.array(XS).reshape([-1]))
                 # exit(0)
                 return losses
             losses.append(loss)
+            n = lambda ff: np.sum(ff ** 2)
+            nn = lambda ff: np.sum(ff)
+            o = optimizer
+            W = "weights"
+            B = "bias"
+            print("L: {}   y: {}    target: {}".format(loss,y,target))
+            print("W: {}, g:{}, x: {}, G: {}, S2: {}, eta: {}".format(n(w),
+                                                                     nn(grad_w),
+                                                                     nn(x),
+                                                                     nn(o.G[W]),
+                                                                     nn(o.S2[W]),
+                                                                     nn(o.eta[W])))
+            print("B: {}, g:{} x: {}, G: {}, S2: {}, eta: {}".format(n(b),
+                                                                    1,
+                                                                    nn(grad_b),
+                                                                    nn(o.G[B]),
+                                                                    nn(o.S2[B]),
+                                                                    nn(o.eta[B])))
+            print("==============================================================")
+            import time
+            time.sleep(0.5)
+
         return losses
 
     def test():
@@ -117,25 +134,24 @@ from tqdm import trange
 
 all_train_losses = []
 all_test_losses = []
-epochs = 10
+epochs = 1
 for i in trange(runs):
     train_losses, test_losses = single_run(epochs)
     all_train_losses.append(train_losses)
     all_test_losses.append(test_losses)
 
-
-for train_losses in all_train_losses:
-    if max(train_losses) - min(train_losses) > 10000:
-        plt.yscale("log")
-        print("Log scale enabled.")
-    plt.plot(train_losses)
-plt.show()
-
-
-for test_losses in all_test_losses:
-    if max(test_losses) - min(test_losses) > 10000:
-        plt.yscale("log")
-        print("Log scale enabled.")
-    plt.plot(test_losses)
-
-plt.show()
+# for train_losses in all_train_losses:
+#     if max(train_losses) - min(train_losses) > 10000:
+#         plt.yscale("log")
+#         print("Log scale enabled.")
+#     plt.plot(train_losses)
+# plt.show()
+#
+#
+# for test_losses in all_test_losses:
+#     if max(test_losses) - min(test_losses) > 10000:
+#         plt.yscale("log")
+#         print("Log scale enabled.")
+#     plt.plot(test_losses)
+#
+# plt.show()
