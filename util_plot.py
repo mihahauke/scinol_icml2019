@@ -155,5 +155,5 @@ def save_plot(path, extension="pdf", logscale=False, verbose=False):
         plt.locator_params(nbins=6)
     if verbose:
         print("Saving {}".format(path))
-    plt.savefig(path)
+    plt.savefig(path,bbox_inches='tight')
     plt.clf()
