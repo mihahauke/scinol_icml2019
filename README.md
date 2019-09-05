@@ -1,3 +1,6 @@
+# Adaptive scale-invariant online algorithms for learning linear models
+This repository is complementary to the paper on [ScInOL](https://arxiv.org/abs/1902.07528)
+
 # Requiremets
 To run this coe, a Linux machine with python3 is needed. There is a high chance it will also work on Mac but it wasn't tested. 
 
@@ -12,7 +15,7 @@ If you wish so, you can run the scripts in docker, a Dockerfile and launch scrip
 
 Just run:
 ```bash
-./scripts.icml_reproduce.sh
+./scripts/icml_reproduce.sh
 ```
 
 You should see this output on the console:
