@@ -2,7 +2,7 @@ numpy
 matplotlib
 seaborn
 setuptools
-tensorflow==1.12.3
+tensorflow==1.15.4
 ruamel.yaml
 tqdm
 python-mnist==0.5
